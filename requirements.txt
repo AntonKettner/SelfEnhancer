@@ -1,0 +1,7 @@
+openai
+gitpython
+pytest
+black
+flake8
+tqdm
+pydantic
