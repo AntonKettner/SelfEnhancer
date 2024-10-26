@@ -216,12 +216,8 @@ class CodeAgent:
             for file_path, changes in file_changes.items():
                 full_file_path = os.path.join(self.base_dir, file_path)
                 print(colored(f"Applying changes to {full_file_path}", "cyan"))
-                time.sleep(3)
-                try:
-                    with open(full_file_path, "r") as file:
-                        lines = file.readlines()
-                except FileNotFoundError:
-                    lines = []
+                with open(full_file_path, "r") as file:
+                    lines = file.readlines()
 
                 # Sort changes by line number, with deletions first
                 changes.sort(key=lambda x: (x[0], x[2] != 'CHANGE' or x[3].strip() != ''))
