@@ -38,25 +38,37 @@ The project consists of several key components:
 
 ## 🚀 Getting Started
 
-1. Clone the repository:   ```
-   git clone https://github.com/yourusername/self-enhancing-ai.git
-   cd self-enhancing-ai   ```
+1. Clone the repository:   
+```shell
+git clone git@github.com:AntonKettner/self_enhancer.git
+cd self_enhancer
+```
 
-2. Install the dependencies:   ```
-   pip install -r requirements.txt   ```
+2. Install the dependencies:   
+```shell
+pip install -r requirements.txt
+```
 
 3. Set up your OpenAI API key in a `.env` file (see Configuration section below)
 
-4. Run the Enhancer:   ```
-   python enhancer.py   ```
+4. Run the Enhancer:
+```shell
+python enhancer.py
+```
 
 ## ⚙️ Configuration
 
-The project uses environment variables for configuration. Create a `.env` file in the project root with the following content:
+The project uses environment variables for configuration. Create a `.env` file in the project root
 
-### Required Configuration
+```shell
+mkdir .env
+```
 
-- `OPENAI_API_KEY`: Your OpenAI API key. Obtain this from the OpenAI website.
+### write your OpenAI API key into the `.env` file
+
+```shell
+OPENAI_API_KEY=<your_openai_api_key>
+```
 
 ### Optional Configuration
 
