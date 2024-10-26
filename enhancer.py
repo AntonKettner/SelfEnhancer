@@ -137,10 +137,10 @@ def enhance():
                     
                     # Change to test directory and create/switch to 'enhanced' branch
                     os.chdir(test_codebase_dir)
-                    subprocess.run(["git", "checkout", "-b", "enhanced"])
+                    # subprocess.run(["git", "checkout", "-b", "enhanced"])
                     
                     print(colored(f"Changes applied in a test directory: {test_codebase_dir}", "green"))
-                    print(colored("New 'enhanced' branch created in the test directory.", "green"))
+                    # print(colored("New 'enhanced' branch created in the test directory.", "green"))
                     
                     # Ask if user wants to make test directory the new home for future improvements
                     make_original = input(colored("Make test directory the new 'original_dir'? (y/n): ", "cyan")).lower() == 'y'
