@@ -35,8 +35,8 @@ def enhance():
     project_parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     
     # Create temporary directories
-    temp_dir_name = "self_enhancer_temp"
-    test_dir_name = "self_enhancer_test"
+    temp_dir_name = "SelfEnhancer_temp"
+    test_dir_name = "SelfEnhancer_test"
     temp_codebase_dir = os.path.join(project_parent_dir, temp_dir_name)
     test_codebase_dir = os.path.join(project_parent_dir, test_dir_name)
     

@@ -19,7 +19,7 @@ The Self-Enhancing AI Codebase Project (Version 0.02) is an innovative experimen
 
 ## 🏗️ System Architecture
 
-![System Architecture Diagram](assets/0_01_flowchart_self_enhancer.png)
+![System Architecture Diagram](assets/0_01_flowchart_SelfEnhancer.png)
 
 The project consists of several key components:
 
@@ -40,8 +40,8 @@ The project consists of several key components:
 
 1. Clone the repository:   
 ```shell
-git clone git@github.com:AntonKettner/self_enhancer.git
-cd self_enhancer
+git clone git@github.com:AntonKettner/SelfEnhancer.git
+cd SelfEnhancer
 ```
 
 2. Install the dependencies:   
@@ -100,3 +100,9 @@ For advanced users, you can also set the following environment variables:
 - `RETRY_DELAY`: Delay (in seconds) between retry attempts. Default is 5.
 
 These advanced options allow for more fine-grained control over the API interaction and error handling.
+
+### 🔮 Outlook
+
+- [ ] Add a CGRAGAssistant to the project to enable enhancement of larger codebases.
+- [ ] Add a testing framework to the project to ensure the quality of the codebase.
+- [ ] Add a user interface to the project to allow for easier interaction with the codebase.
