@@ -163,13 +163,13 @@ PLAN_IMPLEMENTATION_PROMPT = """Create a step-by-step plan to implement the foll
 
 Provide 2-3 steps, NO SUBSTEPS following the format:
 
-1. Step 1
+1. PLANNING Step: ...
 
-2. Step 2
+2. IMPLEMENTATION Step: ...
 
-3. Step 3
+3. IMPLEMENTATION Step: ...
 
-I.e. the first one could be a PLANNING followed by two actual IMPLEMENTATION steps."""
+Always have the first one be a PLANNING followed by two actual IMPLEMENTATION steps."""
 
 USER_IMPLEMENTATION_PROMPT = """
 CURRENT CODEBASE:
