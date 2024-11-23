@@ -51,6 +51,10 @@ def calculate_cost(input_tokens, output_tokens, model):
             "input": 0.01 / 1000,     # $0.01 per 1K input tokens
             "output": 0.03 / 1000,    # $0.03 per 1K output tokens
         },
+        "gpt-4o-mini": {
+            "input": 0.15 / 1000000,     # $0.01 per 1M input tokens
+            "output": 0.6 / 1000000,    # $0.03 per 1M output tokens
+        },
     }
     
     if model not in prices:
@@ -65,7 +69,7 @@ def pretty_print_conversation(messages):
     for message in messages:
         role = message["role"]
         content = message["content"]
-        
+
         if role == "system":
             print(colored(f"System: {content}", "yellow"))
         elif role == "user":

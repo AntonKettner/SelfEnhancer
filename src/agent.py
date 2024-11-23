@@ -1,256 +1,255 @@
 import os
-import glob
 import time
+import glob
 from dotenv import load_dotenv
 from openai import OpenAI
-from data.prompts import IMPROVEMENT_PROMPT
-import json
 from termcolor import colored
 from src.utils import calculate_cost, pretty_print_conversation
+from data.prompts import *
 
+def call_agent(client, messages, model="gpt-4o-mini", max_tokens=1000):
+    response = client.chat.completions.create(
+        model=model,
+        messages=messages,
+        max_tokens=max_tokens
+    )
 
-class CodeAgent:
+    pretty_print_conversation([{"role": "assistant", "content": response.choices[0].message.content}])
+
+    return response.choices[0].message.content, response.usage
+
+class EnhancementAgent:
     def __init__(self, base_dir=None):
         load_dotenv()
         self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        self.plan = None
         self.total_input_tokens = 0
         self.total_output_tokens = 0
         self.total_cost = 0
         self.base_dir = base_dir or os.getcwd()
 
-    def write_plan(self, issues, formatted_code):
-        self.plan = IMPROVEMENT_PROMPT.format(
-            issues=issues, formatted_code=formatted_code
-        )
-
-    def apply_suggestions(self):
-        with open(__file__, "a") as f:
-            f.write(self.suggestions)
-
     def get_current_codebase(self):
         codebase = {}
-        for file_path in glob.glob(os.path.join(self.base_dir, "**/*.py"), recursive=True):
-            with open(file_path, "r") as file:
-                content = file.read()
-                numbered_content = f"FILE:{os.path.relpath(file_path, self.base_dir)}\n"
-                for i, line in enumerate(content.split("\n"), 1):
-                    numbered_content += f":{i}:{line}\n"
-                codebase[os.path.relpath(file_path, self.base_dir)] = numbered_content
+        for extension in ['*.py', '*.txt', '*.md']:
+            for file_path in glob.glob(os.path.join(self.base_dir, "**", extension), recursive=True):
+                # print(file_path)
+                # time.sleep(1)
+                with open(file_path, "r") as file:
+                    content = file.read()
+                    numbered_content = f"FILE:{os.path.relpath(file_path, self.base_dir)}\n"
+                    for i, line in enumerate(content.split("\n"), 1):
+                        numbered_content += f":{i}:{line}\n"
+                    codebase[os.path.relpath(file_path, self.base_dir)] = numbered_content
         return codebase
 
     def process_codebase(self, codebase):
         prompt = ""
         for file_path, content in codebase.items():
-            prompt += f"File: {file_path}\n{content}\n\n"
+            truncated_content = self._truncate_content(content)
+            prompt += f"File: {file_path}\n{truncated_content}\n\n"
         return prompt
 
     def generate_enhancement_ideas(self, codebase):
-        base_prompt = (
-            "Analyze the following codebase and suggest 3 potential enhancements:\n\n"
-        )
+        processed_codebase = self.process_codebase(codebase)
+        messages = [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": GENERATE_IDEAS_PROMPT.format(codebase=processed_codebase)}
+        ]
 
+        pretty_print_conversation(messages)
+        content, usage = call_agent(self.client, messages)
+        self._update_usage(usage)
+        return content
+
+    def evaluate_ideas(self, ideas):
+        messages = [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": EVALUATE_IDEAS_PROMPT.format(ideas=ideas)}
+        ]
+
+        pretty_print_conversation(messages)
+        content, usage = call_agent(self.client, messages)
+        self._update_usage(usage)
+        return self._parse_best_idea(content)
+
+    def plan_implementation(self, idea):
+        messages = [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": PLAN_IMPLEMENTATION_PROMPT.format(idea=idea)}
+        ]
+
+        pretty_print_conversation(messages)
+        content, usage = call_agent(self.client, messages)
+        self._update_usage(usage)
+        return self._parse_implementation_steps(content)
+
+    def suggest_implementation(self, step, applied_changes):
+        codebase = self.get_current_codebase()
         processed_codebase = self.process_codebase(codebase)
 
         messages = [
-            {
-                "role": "system",
-                "content": "You are a helpful assistant that provides code improvement ideas.",
-            },
-            {"role": "user", "content": base_prompt + processed_codebase},
+            {"role": "system", "content": SYSTEM_PROMPT_IMPLEMENTER.format(
+                step=step,
+                applied_changes=applied_changes
+            )},
+            {"role": "user", "content": USER_IMPLEMENTATION_PROMPT.format(codebase=processed_codebase, step=step)}
         ]
 
         pretty_print_conversation(messages)
+        content, usage = call_agent(self.client, messages, max_tokens=4096)
+        self._update_usage(usage)
+        return content
 
-        response = self.client.chat.completions.create(
-            model="gpt-3.5-turbo", messages=messages, max_tokens=1000
-        )
+    def review_step(self, step, implementation, applied_changes):
+        max_loop_count = 5
+        loop_count = 0
+        review_history = []
 
-        pretty_print_conversation(
-            [{"role": "assistant", "content": response.choices[0].message.content}]
-        )
+        while loop_count < max_loop_count:
+            loop_count += 1
+            
+            messages = [
+                {"role": "system", "content": REVIEW_SYSTEM_PROMPT.format(
+                    step=step,
+                    loop_count=loop_count,
+                    max_loop_count=max_loop_count,
+                    review_history=self._format_review_history(review_history),
+                    instructions=SYSTEM_PROMPT_IMPLEMENTER.format(step=step, applied_changes=applied_changes)
+                )},
+                {"role": "user", "content": f"IMPLEMENTATION TO REVIEW:\n{implementation}"}
+            ]
 
-        self.total_input_tokens += response.usage.prompt_tokens
-        self.total_output_tokens += response.usage.completion_tokens
-        self.total_cost += calculate_cost(
-            response.usage.prompt_tokens,
-            response.usage.completion_tokens,
-            "gpt-3.5-turbo",
-        )
+            pretty_print_conversation(messages)
+            review, usage = call_agent(self.client, messages, max_tokens=4096)
+            self._update_usage(usage)
 
-        return response.choices[0].message.content
+            if review.strip().lower() == 'true':
+                print(f"Implementation satisfactory after {loop_count} iterations.")
+                return implementation
 
-    def plan_implementation(self, idea):
-        prompt = f"Create a step-by-step plan to implement the following enhancement:\n{idea}"
-        system_prompt = f"""You are lead developer of a project. You are given an enhancement idea and you need to create a step-by-step plan to implement it.
-        You need to provide 2-3 steps, NO SUBSTEPS following the format: \n\n1. Step 1\n\n2. Step 2\n\n3. Step 3....
-        Differentiate between THINKING steps / PLANNING steps and actual IMPLEMENTATION steps.
-        """
+            review_history.append(review)
+            implementation = self._apply_suggestions(implementation, review)
+
+        print(f"Maximum iterations ({max_loop_count}) reached. Returning last implementation.")
+        return implementation
+
+    def _apply_suggestions(self, implementation, review):
         messages = [
-            {
-                "role": "system",
-                "content": system_prompt,
-            },
-            {"role": "user", "content": prompt},
+            {"role": "system", "content": APPLY_SUGGESTIONS_SYSTEM_PROMPT},
+            {"role": "user", "content": APPLY_SUGGESTIONS_USER_PROMPT.format(implementation=implementation, review=review)}
         ]
 
         pretty_print_conversation(messages)
-
-        response = self.client.chat.completions.create(
-            model="gpt-3.5-turbo", messages=messages, max_tokens=1000
-        )
-
-        pretty_print_conversation(
-            [{"role": "assistant", "content": response.choices[0].message.content}]
-        )
-
-        self.total_input_tokens += response.usage.prompt_tokens
-        self.total_output_tokens += response.usage.completion_tokens
-        self.total_cost += calculate_cost(
-            response.usage.prompt_tokens,
-            response.usage.completion_tokens,
-            "gpt-3.5-turbo",
-        )
-
-        implementation_steps = self._parse_implementation_steps(
-            response.choices[0].message.content
-        )
-        return implementation_steps
-
-    def suggest_implementation(self, step):
-        codebase = self.get_current_codebase()
-
-        prompt = f"""
-        CURRENT CODEBASE:
-        {self.process_codebase(codebase)}
-
-        
-        output THE CHANGES TO THE CODEBASE DUE TO {step}
-        
-        ONLY if the step is a THINKING STEP/PLANNING STEP/REVIEWING STEP OR SOMETHING OF THAT SORT (!!!), YOUR OUTPUT: FILE:hints.txt
-        YOU SHOULD TELL ME THE CHANGES TO ABOVE MENTIONED CODEBASE AFTER THIS:\n\n
-        """
-
-        system_prompt = f"""
-        INSTRUCTIONS:
-        1. Output only the changes TO THE ENTIRE CODEBASE needed to IMPLEMENT THE STEP.
-        2. Use the following format for each change:
-        FILE:filename.ending
-        CHANGE:line_number:new_code
-        ADD:line_number:new_code
-        3. For multiple lines, use multiple CHANGE or ADD entries.
-        4. To delete a line, use CHANGE:line_number:
-        5. To insert a new line without modifying existing ones, use ADD:line_number:new_code
-        6. To keep a line unchanged, simply don't mention it.
-        7. STAY CLOSE TO THE CODEBASE, COVER AS MUCH OF THE CODEBASE AS POSSIBLE
-
-        EXAMPLE:
-        FILE:main.py
-        ADD:9:# New comment
-        CHANGE:10:def modified_function():
-        ADD:11:    print("This is a new line")
-        CHANGE:12:    return True
-        CHANGE:13:
-        
-        OUTPUT THE CHANGES TO THE CODEBASE IN THE USER PROMPT DUE TO {step}"""
-
-        messages = [
-            {
-                "role": "system",
-                "content": f"You are a code modification assistant. {system_prompt}",
-            },
-            {"role": "user", "content": prompt},
-        ]
-
-        pretty_print_conversation(messages)
-
-        response = self.client.chat.completions.create(
-            model="gpt-3.5-turbo", messages=messages, max_tokens=4096
-        )
-
-        changes = response.choices[0].message.content
-
-        pretty_print_conversation(
-            [{"role": "assistant", "content": changes}]
-        )
-
-        self.total_input_tokens += response.usage.prompt_tokens
-        self.total_output_tokens += response.usage.completion_tokens
-        self.total_cost += calculate_cost(
-            response.usage.prompt_tokens,
-            response.usage.completion_tokens,
-            "gpt-3.5-turbo",
-        )
-
-        # self._apply_changes(changes)
-        return changes
-
-    def apply_linting_suggestions(self, issues, formatted_code):
-        for file_path, content in formatted_code.items():
-            with open(file_path, "w") as file:
-                file.write(content)
-
-        for issue in issues:
-            self._fix_linting_issue(issue)
+        content, usage = call_agent(self.client, messages, max_tokens=4096)
+        self._update_usage(usage)
+        return content
 
     def _apply_changes(self, changes):
+        """Apply changes to files based on the formatted change instructions."""
         current_file = None
-        file_changes = {}
-
-        for line in changes.split("\n"):
-            if line.startswith("FILE:"):
-                current_file = line.split(":", 1)[1].strip()
-                if current_file not in file_changes:
-                    file_changes[current_file] = []
-            elif line.startswith("CHANGE:") or line.startswith("ADD:"):
+        current_changes = []
+        
+        # Parse the changes string into a structured format
+        for line in changes.strip().split('\n'):
+            if line.startswith('FILE:'):
+                if current_file and current_changes:
+                    self._execute_file_changes(current_file, current_changes)
+                current_file = line.replace('FILE:', '').strip()
+                current_changes = []
+            elif line.startswith(('CHANGE:', 'ADD:', 'DELETE:')):
                 if current_file is None:
                     continue
-                action, line_info, new_code = line.split(":", 2)
+                current_changes.append(line)
+        
+        # Apply any remaining changes
+        if current_file and current_changes:
+            self._execute_file_changes(current_file, current_changes)
+
+    def _execute_file_changes(self, file_path, changes):
+        """Execute the parsed changes for a specific file."""
+        full_path = os.path.join(self.base_dir, file_path)
+        
+        # Create directories if they don't exist
+        os.makedirs(os.path.dirname(full_path), exist_ok=True)
+        
+        # Read existing file or create empty file
+        if os.path.exists(full_path):
+            with open(full_path, 'r') as f:
+                lines = f.readlines()
+        else:
+            print(colored(f"Creating new file: {full_path}", "green"))
+            lines = []
+        
+        # Process each change
+        for change in changes:
+            try:
+                action, line_info, content = change.split(':', 2)
+                content = content.strip()
+                
                 if '-' in line_info:
+                    # Range of lines
                     start, end = map(int, line_info.split('-'))
-                    file_changes[current_file].append((start, end, action, new_code))
                 else:
-                    line_number = int(line_info)
-                    file_changes[current_file].append((line_number, line_number, action, new_code))
+                    # Single line
+                    start = end = int(line_info)
+                
+                if action == 'DELETE' or (action == 'CHANGE' and not content):
+                    # Remove the specified lines
+                    while end >= start and end > 0 and start <= len(lines):
+                        if start - 1 < len(lines):
+                            lines.pop(start - 1)
+                        end -= 1
+                
+                elif action == 'CHANGE':
+                    # Replace the specified lines
+                    new_lines = [line + '\n' for line in content.split('\n')]
+                    if start <= len(lines):
+                        lines[start-1:end] = new_lines
+                    else:
+                        # Extend lines if needed
+                        lines.extend([''] * (start - len(lines) - 1))
+                        lines.extend(new_lines)
+                
+                elif action == 'ADD':
+                    # Insert new lines at the specified position
+                    new_lines = [line + '\n' for line in content.split('\n')]
+                    if start <= len(lines):
+                        lines[start-1:start-1] = new_lines
+                    else:
+                        # Extend lines if needed
+                        lines.extend([''] * (start - len(lines) - 1))
+                        lines.extend(new_lines)
+            
+            except Exception as e:
+                print(colored(f"Error processing change '{change}': {str(e)}", "red"))
+                continue
+        
+        # Write the modified content back to the file
         try:
-            for file_path, changes in file_changes.items():
-                full_file_path = os.path.join(self.base_dir, file_path)
-                print(colored(f"Applying changes to {full_file_path}", "cyan"))
-                with open(full_file_path, "r") as file:
-                    lines = file.readlines()
-
-                # Sort changes by line number, with deletions first
-                changes.sort(key=lambda x: (x[0], x[2] != 'CHANGE' or x[3].strip() != ''))
-
-                line_offset = 0
-                for start, end, action, new_code in changes:
-                    adjusted_start = start + line_offset
-                    adjusted_end = end + line_offset
-
-                    if action == "CHANGE" and new_code.strip() == "":
-                        # Delete lines
-                        del lines[adjusted_start - 1:adjusted_end]
-                        line_offset -= (end - start + 1)
-                    elif action == "CHANGE":
-                        # Replace lines
-                        lines[adjusted_start - 1:adjusted_end] = [new_code + "\n"]
-                        line_offset += len(new_code.split("\n")) - (end - start + 1)
-                    elif action == "ADD":
-                        # Add new line
-                        lines.insert(adjusted_start - 1, new_code + "\n")
-                        line_offset += 1
-
-                with open(full_file_path, "w") as file:
-                    file.writelines(lines)
+            with open(full_path, 'w') as f:
+                f.writelines(lines)
+            print(colored(f"Successfully applied changes to {file_path}", "green"))
         except Exception as e:
-            print(colored(f"Error applying changes: {e}", "red"))
+            print(colored(f"Error writing to {file_path}: {str(e)}", "red"))
 
-        print(colored("Changes applied successfully.", "green"))
+    def _parse_best_idea(self, evaluation):
+        ranked_ideas = []
+        remaining_eval = evaluation
 
-    def _fix_linting_issue(self, issue):
-        # Implement logic to fix a single linting issue
-        # This is a placeholder and should be expanded based on your linting tool's output format
-        pass
+        for i in range(1, 10):  # Assuming we won't have more than 9 ranked ideas
+            start = remaining_eval.find(f"{i}.")
+            if start == -1:
+                break
+
+            next_idea = remaining_eval.find(f"{i+1}.")
+            if next_idea == -1:
+                idea = remaining_eval[start:].strip()
+            else:
+                idea = remaining_eval[start:next_idea].strip()
+
+            ranked_ideas.append(idea)
+            remaining_eval = remaining_eval[next_idea:]
+
+        return ranked_ideas
 
     def _parse_implementation_steps(self, implementation_plan):
         steps = []
@@ -271,3 +270,27 @@ class CodeAgent:
             remaining_plan = remaining_plan[next_step:]
 
         return steps
+
+    def _format_review_history(self, review_history):
+        if not review_history:
+            return "No previous reviews."
+        return "\n\n".join([f"Review {i+1}:\n{review}" for i, review in enumerate(review_history)])
+
+    def _update_usage(self, usage):
+        self.total_input_tokens += usage.prompt_tokens
+        self.total_output_tokens += usage.completion_tokens
+        self.total_cost += calculate_cost(usage.prompt_tokens, usage.completion_tokens, "gpt-4o-mini")
+
+    def _truncate_content(self, content, max_lines=10, max_chars=500):
+        lines = content.split('\n')
+        if len(lines) > max_lines:
+            truncated_lines = lines[:max_lines]
+            truncated_lines.append("... (content truncated)")
+        else:
+            truncated_lines = lines
+
+        truncated_content = '\n'.join(truncated_lines)
+        if len(truncated_content) > max_chars:
+            truncated_content = truncated_content[:max_chars] + "... (content truncated)"
+
+        return truncated_content
