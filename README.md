@@ -78,10 +78,15 @@ OPENAI_API_KEY=<your_openai_api_key>
 ### Optional Configuration of Default Settings:
 
 `MAX_RAG_VECTOR_NO` = 3
+
 `RAG_FILETYPES` = ["py", "txt", "md"]
+
 `MIN_RELEVANCE_SCORE` = 0.58    # 0 similarity score means it is the same Vector, 1 means it is completely different
+
 `HUMAN_IN_THE_LOOP` = True
+
 `LLM_MODEL` = "gpt-4o-mini"
+
 `IDEA_GENERATION` = True
 
 Remember to keep your `.env` file secure and never commit it to version control. The `.gitignore` file in this project is set up to exclude the `.env` file by default.
