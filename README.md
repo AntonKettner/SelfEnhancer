@@ -1,4 +1,4 @@
-![Self-Enhancing AI Logo](assets/logo.png)
+![Self-Enhancing AI Logo](assets/logo.jpg)
 
 # 🧠 Self-Enhancing AI Codebase (v0.10)
 
@@ -19,9 +19,9 @@ Version 0.1 is a complete overhaul using Langchain, for a semi-working prototype
 6. 🔒 Safe Codebase Modification: Works on a copy of the original codebase to prevent unintended changes.
 
 
-## 🏗️ System Architecture
+## 🏗️ System Architecture of branch 0_02
 
-![System Architecture Diagram](assets/0_01_flowchart_SelfEnhancer.png)
+![System Architecture Diagram](assets/0_02_flowchart_SelfEnhancer.png)
 
 The project consists of several key components:
 
