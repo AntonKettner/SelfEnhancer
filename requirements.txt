@@ -1,7 +1,13 @@
-openai
-gitpython
-pytest
-black
-flake8
-tqdm
-pydantic
+# python==3.11
+numpy==1.26.4
+python-dotenv==1.0.1 # For reading environment variables stored in .env file
+langchain==0.3.8
+langchain-community==0.3.8
+langchain-openai==0.2.9 # For embeddings
+langchain-chroma==0.1.4
+unstructured==0.16.6 # Document loading
+chromadb==0.5.20 # Vector storage
+openai==1.55.0 # For embeddings
+termcolor==2.5.0
+# tiktoken==0.7.0  # For embeddings
+

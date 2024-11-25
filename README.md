@@ -1,21 +1,23 @@
 ![Self-Enhancing AI Logo](assets/logo.png)
 
-# 🧠 Self-Enhancing AI Codebase (v0.02)
+# 🧠 Self-Enhancing AI Codebase (v0.10)
 
 > An experimental framework for exploring AI-driven code optimization
 
 ## 🚀 Project Overview
 
-The Self-Enhancing AI Codebase Project (Version 0.02) is an innovative experiment that utilizes artificial intelligence to autonomously improve and extend its own source code. This system uses advanced language models to analyze code, propose improvements, implement, and verify them, creating a self-developing software ecosystem.
+The Self-Enhancing AI Codebase Project (Version 0.10) is an experiment that utilizes artificial intelligence to autonomously improve and extend its own source code. This system will gather improvement ideas and implement them. Current status is that idea generation is done.
+Version 0.1 is a complete overhaul using Langchain, for a semi-working prototype see branch 0.02.
 
-## ✨ Key Features
+## ✨ GOAL: Key Features
 
-1. 🤖 Autonomous Improvement: The system can independently generate, evaluate, and implement improvement ideas.
+1. 🤖 Autonomous Improvement: The system can generate, evaluate, and implement improvement ideas.
 2. 👥 Multi-Agent Architecture: Uses separate agents for code generation and control/verification.
 3. 🎛️ Interactive User Control: Allows users to approve, test, or reject proposed changes.
 4. 🔄 Version Control Integration: Works seamlessly with Git for change management.
 5. 💰 Cost Monitoring: Monitors and reports API usage and associated costs.
 6. 🔒 Safe Codebase Modification: Works on a copy of the original codebase to prevent unintended changes.
+
 
 ## 🏗️ System Architecture
 
@@ -49,6 +51,9 @@ cd SelfEnhancer
 pip install -r requirements.txt
 ```
 
+```shell
+pip install "unstructured[md]"
+```
 3. Set up your OpenAI API key in a `.env` file (see Configuration section below)
 
 4. Run the Enhancer:
@@ -70,39 +75,20 @@ mkdir .env
 OPENAI_API_KEY=<your_openai_api_key>
 ```
 
-### Optional Configuration
+### Optional Configuration of Default Settings:
 
-- `MODEL_NAME`: The name of the OpenAI model to use. Default is "gpt-3.5-turbo".
-- `MAX_TOKENS`: The maximum number of tokens to generate in each API call. Default is 4000.
-- `TEMPERATURE`: Controls the randomness of the model's output. Higher values (e.g., 0.8) make the output more random, while lower values (e.g., 0.2) make it more focused and deterministic. Default is 0.7.
-- `BASE_DIR`: The base directory for the project. Default is "./" (current directory).
-- `GITHUB_TOKEN`: Your GitHub personal access token, if you want to enable GitHub integration.
-- `USE_GITHUB`: Set to "true" to enable GitHub integration, "false" to disable it. Default is false.
-- `COST_LIMIT`: The maximum cost in USD that you're willing to spend on API calls. The system will stop when this limit is reached. Default is 10.0.
-
-### Customizing the Configuration
-
-You can modify these values to adjust the behavior of the Self-Enhancing AI:
-
-- Increase `MAX_TOKENS` for more detailed responses, but be aware this will increase API usage and costs.
-- Adjust `TEMPERATURE` to control the creativity vs. consistency of the AI's suggestions.
-- Set `USE_GITHUB` to true and provide a `GITHUB_TOKEN` to enable automatic commits and pull requests for changes.
-- Modify `COST_LIMIT` to control your maximum spending on API calls.
+`MAX_RAG_VECTOR_NO` = 3
+`RAG_FILETYPES` = ["py", "txt", "md"]
+`MIN_RELEVANCE_SCORE` = 0.58    # 0 similarity score means it is the same Vector, 1 means it is completely different
+`HUMAN_IN_THE_LOOP` = True
+`LLM_MODEL` = "gpt-4o-mini"
+`IDEA_GENERATION` = True
 
 Remember to keep your `.env` file secure and never commit it to version control. The `.gitignore` file in this project is set up to exclude the `.env` file by default.
 
-### Advanced Configuration
-
-For advanced users, you can also set the following environment variables:
-
-- `OPENAI_ORG_ID`: Your OpenAI organization ID, if you're using an organization account.
-- `RETRY_ATTEMPTS`: Number of retry attempts for API calls in case of failures. Default is 3.
-- `RETRY_DELAY`: Delay (in seconds) between retry attempts. Default is 5.
-
-These advanced options allow for more fine-grained control over the API interaction and error handling.
-
 ### 🔮 Outlook
 
-- [ ] Add a CGRAGAssistant to the project to enable enhancement of larger codebases.
-- [ ] Add a testing framework to the project to ensure the quality of the codebase.
-- [ ] Add a user interface to the project to allow for easier interaction with the codebase.
+- [ ] Add implementation similar to branch 0.02.
+- [ ] Change implementation to be more consistent.
+- [ ] Add testing with pylint or other linters.
+- [ ] Add filetree and overview of code into LLMs
