@@ -10,3 +10,10 @@ chromadb==0.5.20 # Vector storage
 openai>=1.57.2 # For embeddings
 termcolor==2.5.0
 tiktoken>=0.7.0  # For embeddings
+
+# Web Application Requirements
+flask==3.0.2
+flask-login==0.6.3
+werkzeug==3.0.1
+flask-sqlalchemy==3.1.1
+gunicorn==21.2.0
