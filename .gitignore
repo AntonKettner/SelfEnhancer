@@ -19,4 +19,3 @@ logs/
 .DS_Store
 
 .self_enhancer.code-workspace
-.gitignore

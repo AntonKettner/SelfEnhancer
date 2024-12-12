@@ -54,7 +54,7 @@ pip install -r requirements.txt
 ```shell
 pip install "unstructured[md]"
 ```
-3. Set up your OpenAI API key in a `.env` file (see Configuration section below)
+3. Set up your OpenAI API key in the `.env` file (see Configuration section below)
 
 4. Run the Enhancer:
 ```shell
@@ -63,16 +63,12 @@ python enhancer.py
 
 ## ⚙️ Configuration
 
-The project uses environment variables for configuration. Create a `.env` file in the project root
+The project uses environment variables for configuration.
+
+### edit `.env` file to include your OpenAI API key (i.e. with nano)
 
 ```shell
-mkdir .env
-```
-
-### write your OpenAI API key into the `.env` file
-
-```shell
-OPENAI_API_KEY=<your_openai_api_key>
+nano .env
 ```
 
 ### Optional Configuration of Default Settings:
