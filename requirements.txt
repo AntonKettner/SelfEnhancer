@@ -9,5 +9,4 @@ unstructured==0.16.6 # Document loading
 chromadb==0.5.20 # Vector storage
 openai>=1.57.2 # For embeddings
 termcolor==2.5.0
-# tiktoken==0.7.0  # For embeddings
-
+tiktoken>=0.7.0  # For embeddings

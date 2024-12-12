@@ -26,6 +26,7 @@ def query_RAG_DB(query_text, db_path=RAG_DB_PATH):
 
     # Prepare the DB.
     embedding_function = OpenAIEmbeddings()
+    print(f"db_path: {db_path}")
     db = Chroma(persist_directory=db_path, embedding_function=embedding_function)
 
     # Search the DB.

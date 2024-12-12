@@ -14,6 +14,7 @@ from config.settings import *
 load_dotenv()
 
 
+#! Add check for existing database -> save saving times of all docs and their lengths to temp dir
 def generate_RAG_DB(path=DATA_PATH):
     documents = load_documents(path)
     chunks = split_text(documents)

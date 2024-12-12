@@ -13,7 +13,7 @@ Please answer the following question:
 
 # =========================================IMPROVEMENT IDEAS=========================================
 IMPROVEMENT_IDEAS = """
-Based on the following project generate improvement ideas.
+Based on the following project generate improvement ideas. Consider general code quality, readability, maintainability, stability and featureset.
 
 Project:
 ****
@@ -28,4 +28,25 @@ Please generate 5 specific improvement ideas on how to enhance this codebase. Fo
 5. [IDEA] Fifth improvement idea
 
 Each idea should be practical, specific, and implementable.
+"""
+
+GET_RAG_IMPROVEMENT = """
+BAD CODE quality, readability, maintainability, stability and featureset.
+
+Project:
+****
+{structure}
+****
+"""
+
+RAG_CODEBASE = """
+RAG context:
+__
+{rag_context}
+__
+
+Structure Tree:
+__
+{structure}
+__
 """
