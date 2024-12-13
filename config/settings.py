@@ -1,7 +1,7 @@
 import os
 # =========================================PATHS=========================================
-RAG_DB_PATH = "chroma"
-DATA_PATH = os.getcwd()
+RAG_DB_PATH = os.environ.get('RAG_DB_PATH', '/home/data/chroma')
+DATA_PATH = os.environ.get('DATA_PATH', os.getcwd())
 # =========================================PARAMS=========================================
 MAX_RAG_VECTOR_NO = 3
 RAG_FILETYPES = ["py", "txt", "md"]
