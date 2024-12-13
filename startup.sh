@@ -8,5 +8,6 @@ chmod 755 /home/data
 cd /home/site/wwwroot
 ./deploy.sh
 
-# Start gunicorn
-gunicorn --bind=0.0.0.0 --timeout 600 wsgi:app
+# Start gunicorn with the port from Azure's environment variable
+PORT="${WEBSITES_PORT:-8000}"
+gunicorn --bind=0.0.0.0:${PORT} --timeout 600 wsgi:app
