@@ -1,6 +1,11 @@
 #!/bin/bash
 
-# Run deployment script to initialize database and create admin user
+# Create necessary directories with proper permissions
+mkdir -p /home/data
+chmod 755 /home/data
+
+# Initialize database and create admin user
+cd /home/site/wwwroot
 ./deploy.sh
 
 # Start gunicorn
