@@ -1,15 +1,15 @@
-# python==3.11
+# Core dependencies
 numpy==1.26.4
-python-dotenv==1.0.1 # For reading environment variables stored in .env file
+python-dotenv==1.0.1
 langchain==0.3.8
 langchain-community==0.3.8
-langchain-openai>=0.2.12 # For embeddings
+langchain-openai>=0.2.12
 langchain-chroma==0.1.4
-unstructured==0.16.6 # Document loading
-chromadb==0.5.20 # Vector storage
-openai>=1.57.2 # For embeddings
+unstructured==0.16.6
+chromadb==0.5.20
+openai>=1.57.2
 termcolor==2.5.0
-tiktoken>=0.7.0  # For embeddings
+tiktoken>=0.7.0
 
 # Web Application Requirements
 flask==3.0.2
