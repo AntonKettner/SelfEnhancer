@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 env:
-  AZURE_WEBAPP_NAME: SelfEnhancerDemo
+  AZURE_WEBAPP_NAME: selfenhancerdemo  # Updated to match exact case
   PYTHON_VERSION: '3.11'
 
 jobs:
@@ -29,6 +29,10 @@ jobs:
 
       - name: Install dependencies
         run: pip install -r requirements.txt
+        
+      - name: Create required directories
+        run: |
+          mkdir -p instance
 
       - name: Upload artifact for deployment jobs
         uses: actions/upload-artifact@v3
