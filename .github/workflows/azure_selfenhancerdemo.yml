@@ -37,17 +37,9 @@ jobs:
           chmod +x deploy.sh
           chmod +x startup.sh
 
-      - name: Create deployment package
+      - name: Zip artifact for deployment
         run: |
-          # Create a clean deployment package
-          mkdir deployment
-          # Copy necessary files
-          cp -r app.py config data enhancer.py requirements.txt src templates wsgi.py deploy.sh startup.sh deployment/
-          cd deployment
-          # Create empty directories that will be needed
-          mkdir -p /home/data
-          # Create the ZIP file
-          zip -r ../release.zip ./*
+          zip -r release.zip . -x "venv/*" ".*" "__pycache__/*" "*.pyc"
 
       - name: Upload artifact for deployment jobs
         uses: actions/upload-artifact@v4
@@ -71,8 +63,10 @@ jobs:
           name: python-app
 
       - name: Unzip artifact for deployment
-        run: unzip release.zip
-      
+        run: |
+          unzip release.zip
+          rm release.zip
+
       - name: Login to Azure
         uses: azure/login@v2
         with:
@@ -86,4 +80,4 @@ jobs:
         with:
           app-name: 'SelfEnhancerDemo'
           package: '.'
-          startup-command: '/home/site/wwwroot/startup.sh'
+          startup-command: ''  # Let Azure use the default Python startup
