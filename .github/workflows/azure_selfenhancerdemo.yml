@@ -32,11 +32,6 @@ jobs:
         
       # Optional: Add step to run tests here (PyTest, Django test suites, etc.)
 
-      - name: Make scripts executable
-        run: |
-          chmod +x deploy.sh
-          chmod +x startup.sh
-
       - name: Zip artifact for deployment
         run: |
           zip -r release.zip . -x "venv/*" ".*" "__pycache__/*" "*.pyc"
@@ -80,4 +75,3 @@ jobs:
         with:
           app-name: 'SelfEnhancerDemo'
           package: '.'
-          startup-command: ''  # Let Azure use the default Python startup

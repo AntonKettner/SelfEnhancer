@@ -1,1 +1,1 @@
-gunicorn --config gunicorn.conf.py wsgi:app
+gunicorn --bind=0.0.0.0:8000 --timeout 600 --access-logfile '-' --error-logfile '-' wsgi:app
