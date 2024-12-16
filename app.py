@@ -1,9 +1,12 @@
+__import__('pysqlite3')
+import sys
+sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+
 from flask import Flask, render_template, request, redirect, url_for, jsonify, Response, flash
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
-import sys
 from enhancer import Enhancement
 from io import StringIO
 from threading import Thread

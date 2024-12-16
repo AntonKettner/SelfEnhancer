@@ -1,7 +1,10 @@
+__import__('pysqlite3')
+import sys
+sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+
 import argparse
 import dotenv
 from termcolor import colored
-# from dataclasses import dataclass
 from langchain_chroma import Chroma
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
@@ -50,4 +53,3 @@ def query_RAG_DB(query_text, db_path=RAG_DB_PATH):
     model = ChatOpenAI()
     response = model.invoke(prompt)
     return response
-
