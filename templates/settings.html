@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Manage API Key</title>
+    <title>User Settings</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -16,7 +16,8 @@
             display: block;
             margin-bottom: 5px;
         }
-        input[type="text"] {
+        input[type="text"],
+        input[type="password"] {
             width: 100%;
             padding: 8px;
             margin-bottom: 10px;
@@ -50,16 +51,10 @@
         .back-link:hover {
             text-decoration: underline;
         }
-        .current-key {
-            margin-bottom: 20px;
-            padding: 10px;
-            background-color: #f8f9fa;
-            border-radius: 4px;
-        }
     </style>
 </head>
 <body>
-    <h1>Manage API Key</h1>
+    <h1>User Settings</h1>
     
     {% with messages = get_flashed_messages() %}
         {% if messages %}
@@ -69,19 +64,23 @@
         {% endif %}
     {% endwith %}
 
-    {% if api_key %}
-    <div class="current-key">
-        <strong>Current API Key:</strong> {{ api_key }}
-    </div>
-    {% endif %}
-
     <form method="POST">
         <div class="form-group">
-            <label for="api_key">New API Key:</label>
-            <input type="text" id="api_key" name="api_key" required>
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username" value="{{ user.username }}" required>
         </div>
 
-        <button type="submit">Update API Key</button>
+        <div class="form-group">
+            <label for="current_password">Current Password:</label>
+            <input type="password" id="current_password" name="current_password" required>
+        </div>
+
+        <div class="form-group">
+            <label for="new_password">New Password (leave blank to keep current):</label>
+            <input type="password" id="new_password" name="new_password">
+        </div>
+
+        <button type="submit">Update Settings</button>
     </form>
 
     <a href="{{ url_for('dashboard') }}" class="back-link">Back to Dashboard</a>

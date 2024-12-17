@@ -163,7 +163,40 @@ def manage_api_key():
             return redirect(url_for('dashboard'))
     
     api_key = get_api_key()
-    return render_template('api_key.html', api_key=api_key)
+    # Show first 10 digits of API key if it exists
+    masked_key = f"{api_key[:10]}..." if api_key else None
+    return render_template('api_key.html', api_key=masked_key)
+
+@app.route('/settings', methods=['GET', 'POST'])
+@login_required
+def user_settings():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        current_password = request.form.get('current_password')
+        new_password = request.form.get('new_password')
+        
+        # Verify current password
+        if not current_user.check_password(current_password):
+            flash('Current password is incorrect')
+            return redirect(url_for('user_settings'))
+        
+        # Update username if provided and different
+        if username and username != current_user.username:
+            # Check if username is already taken
+            if User.query.filter_by(username=username).first():
+                flash('Username already exists')
+                return redirect(url_for('user_settings'))
+            current_user.username = username
+        
+        # Update password if provided
+        if new_password:
+            current_user.set_password(new_password)
+        
+        db.session.commit()
+        flash('Settings updated successfully')
+        return redirect(url_for('dashboard'))
+    
+    return render_template('settings.html', user=current_user)
 
 @app.route('/run-enhancement')
 @login_required

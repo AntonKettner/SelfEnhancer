@@ -1,152 +1,98 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Dashboard - Code Enhancer</title>
+    <title>Dashboard</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f4f4f4;
-        }
-        .navbar {
-            background-color: #333;
-            padding: 1rem;
-            color: white;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .navbar a {
-            color: white;
-            text-decoration: none;
-            margin-left: 1rem;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 2rem auto;
-            padding: 0 1rem;
-        }
-        .card {
-            background-color: white;
-            padding: 2rem;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            margin-bottom: 2rem;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
         }
         .button {
-            background-color: #007bff;
+            display: inline-block;
+            padding: 10px 15px;
+            margin: 5px;
+            background-color: #4CAF50;
             color: white;
-            border: none;
-            padding: 0.75rem 1.5rem;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 1rem;
             text-decoration: none;
+            border-radius: 4px;
         }
         .button:hover {
-            background-color: #0056b3;
+            background-color: #45a049;
         }
-        .button:disabled {
-            background-color: #ccc;
-            cursor: not-allowed;
+        .button.logout {
+            background-color: #f44336;
         }
-        #output {
+        .button.logout:hover {
+            background-color: #da190b;
+        }
+        .button.settings {
+            background-color: #2196F3;
+        }
+        .button.settings:hover {
+            background-color: #0b7dda;
+        }
+        .output {
+            margin-top: 20px;
+            padding: 10px;
             background-color: #f8f9fa;
-            padding: 1rem;
             border-radius: 4px;
             white-space: pre-wrap;
             font-family: monospace;
-            margin-top: 1rem;
-            max-height: 500px;
-            overflow-y: auto;
         }
-        .loading {
-            display: none;
-            margin-top: 1rem;
-            color: #666;
-        }
-        .alert {
-            padding: 1rem;
+        .flash-message {
+            padding: 10px;
+            margin-bottom: 20px;
             border-radius: 4px;
-            margin-bottom: 1rem;
-        }
-        .alert-warning {
-            background-color: #fff3cd;
-            color: #856404;
-            border: 1px solid #ffeeba;
-        }
-        .alert-danger {
             background-color: #f8d7da;
             color: #721c24;
-            border: 1px solid #f5c6cb;
         }
     </style>
 </head>
 <body>
-    <div class="navbar">
-        <h1>Code Enhancer</h1>
-        <div>
-            {% if is_admin %}
-            <a href="{{ url_for('manage_api_key') }}" class="button">Manage API Key</a>
-            {% endif %}
-            <a href="{{ url_for('logout') }}" class="button">Logout</a>
-        </div>
-    </div>
+    <h1>Dashboard</h1>
     
-    <div class="container">
-        <div class="card">
-            <h2>Generate Enhancement Ideas</h2>
-            
-            {% if not api_key_configured %}
-                {% if is_admin %}
-                    <div class="alert alert-warning">
-                        OpenAI API key is not configured. Please <a href="{{ url_for('manage_api_key') }}">configure the API key</a> to use the enhancement feature.
-                    </div>
-                {% else %}
-                    <div class="alert alert-danger">
-                        OpenAI API key is not configured. Please contact the administrator.
-                    </div>
-                {% endif %}
-            {% endif %}
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for message in messages %}
+                <div class="flash-message">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
 
-            <p>Click the button below to analyze your codebase and generate enhancement ideas.</p>
-            <button id="runButton" class="button" onclick="runEnhancement()" {% if not api_key_configured %}disabled{% endif %}>
-                Run Enhancement
-            </button>
-            <div id="loading" class="loading">Processing... This may take a few minutes.</div>
-            <div id="output"></div>
-        </div>
-    </div>
+    {% if is_admin %}
+        <a href="{{ url_for('manage_api_key') }}" class="button">Manage API Key</a>
+    {% endif %}
+
+    <a href="{{ url_for('user_settings') }}" class="button settings">User Settings</a>
+    
+    {% if api_key_configured %}
+        <button onclick="runEnhancement()" class="button">Run Enhancement</button>
+    {% else %}
+        <p>Please configure the API key first.</p>
+    {% endif %}
+
+    <a href="{{ url_for('logout') }}" class="button logout">Logout</a>
+
+    <div id="output" class="output"></div>
 
     <script>
         function runEnhancement() {
-            const button = document.getElementById('runButton');
-            const loading = document.getElementById('loading');
             const output = document.getElementById('output');
-            
-            button.disabled = true;
-            loading.style.display = 'block';
-            output.textContent = '';
+            output.textContent = 'Starting enhancement process...\n';
             
             const eventSource = new EventSource('/run-enhancement');
             
             eventSource.onmessage = function(event) {
-                if (event.data === 'Processing...') {
-                    loading.textContent = event.data;
-                } else {
-                    loading.style.display = 'none';
-                    output.textContent = event.data;
-                    button.disabled = false;
-                    eventSource.close();
-                }
+                output.textContent += event.data + '\n';
+                output.scrollTop = output.scrollHeight;
             };
             
-            eventSource.onerror = function() {
-                loading.style.display = 'none';
-                output.textContent = 'An error occurred while processing the request.';
-                button.disabled = false;
+            eventSource.onerror = function(event) {
+                console.error('EventSource failed:', event);
                 eventSource.close();
+                output.textContent += 'Enhancement process completed or encountered an error.\n';
             };
         }
     </script>
