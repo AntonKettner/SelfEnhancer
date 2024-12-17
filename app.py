@@ -63,24 +63,28 @@ def capture_output(queue):
     sys.stdout = redirected_output
 
     try:
-        # Set OpenAI API key from database
-        api_key = get_api_key()
-        if not api_key:
-            queue.put("Error: OpenAI API key not configured")
-            return
+        # Create application context for database access
+        with app.app_context():
+            # Set OpenAI API key from database
+            api_key = get_api_key()
+            if not api_key:
+                queue.put("Error: OpenAI API key not configured")
+                return
 
-        os.environ['OPENAI_API_KEY'] = api_key
-        
-        enhancement = Enhancement()
-        enhancement.ideas, enhancement.usage = enhancement.generate_improvement_ideas()
-        
-        # Format the output
-        output = "IDEAS FOR CODEBASE ENHANCEMENT:\n\n"
-        for index, idea in enumerate(enhancement.ideas):
-            output += f"{index+1}: {idea}\n\n"
-        output += f"\nAPI Usage:\n{enhancement.usage}"
-        
-        queue.put(output)
+            os.environ['OPENAI_API_KEY'] = api_key
+            
+            enhancement = Enhancement()
+            enhancement.ideas, enhancement.usage = enhancement.generate_improvement_ideas()
+            
+            # Format the output
+            output = "IDEAS FOR CODEBASE ENHANCEMENT:\n\n"
+            for index, idea in enumerate(enhancement.ideas):
+                output += f"{index+1}: {idea}\n\n"
+            output += f"\nAPI Usage:\n{enhancement.usage}"
+            
+            queue.put(output)
+    except Exception as e:
+        queue.put(f"Error: {str(e)}")
     finally:
         sys.stdout = old_stdout
 
