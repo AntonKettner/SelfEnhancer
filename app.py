@@ -18,8 +18,13 @@ if not app.config['SECRET_KEY']:
     raise ValueError("No SECRET_KEY set for Flask application")
 
 # Use Azure Web App's persistent storage for SQLite database
-default_db_path = 'sqlite:////home/site/wwwroot/data/users.db'
+default_db_path = 'sqlite:////home/site/wwwroot/data/sqlite/users.db'
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', default_db_path)
+
+# Ensure database directory exists
+db_dir = os.path.dirname(app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', ''))
+os.makedirs(db_dir, exist_ok=True)
+os.chmod(db_dir, 0o755)
 
 db = SQLAlchemy(app)
 login_manager = LoginManager()

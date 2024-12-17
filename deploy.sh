@@ -5,10 +5,11 @@ set -e
 
 echo "Starting deployment setup..."
 
-# Create persistent data directory in Azure Web Apps storage
-echo "Creating data directory..."
-mkdir -p /home/site/wwwroot/data
-chmod 755 /home/site/wwwroot/data
+# Create persistent data directories in Azure Web Apps storage
+echo "Creating data directories..."
+mkdir -p /home/site/wwwroot/data/sqlite
+mkdir -p /home/site/wwwroot/data/chroma
+chmod -R 755 /home/site/wwwroot/data
 
 # Initialize the SQLite database
 echo "Initializing database..."
@@ -21,6 +22,7 @@ from werkzeug.security import generate_password_hash
 print("Python initialization starting...")
 print(f"Current working directory: {os.getcwd()}")
 print(f"Database URL: {app.config['SQLALCHEMY_DATABASE_URI']}")
+print(f"ChromaDB Path: {os.environ.get('RAG_DB_PATH')}")
 
 # Ensure database directory exists
 db_path = app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', '')
@@ -30,6 +32,7 @@ print(f"Database directory: {db_dir}")
 if not os.path.exists(db_dir):
     print(f"Creating database directory: {db_dir}")
     os.makedirs(db_dir)
+    os.chmod(db_dir, 0o755)
 
 with app.app_context():
     try:

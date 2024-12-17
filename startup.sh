@@ -8,10 +8,15 @@ echo "Starting application setup..."
 # Wait for filesystem permissions to be ready
 sleep 10
 
-# Create data directory in the persistent storage location
-echo "Creating data directory..."
-mkdir -p /home/site/wwwroot/data
-chmod 755 /home/site/wwwroot/data
+# Create necessary directories in Azure's persistent storage
+echo "Creating data directories..."
+mkdir -p /home/site/wwwroot/data/sqlite
+mkdir -p /home/site/wwwroot/data/chroma
+chmod -R 755 /home/site/wwwroot/data
+
+# Set environment variables for database paths
+export DATABASE_URL="sqlite:////home/site/wwwroot/data/sqlite/users.db"
+export RAG_DB_PATH="/home/site/wwwroot/data/chroma"
 
 # Initialize database and create admin user
 echo "Initializing application..."
