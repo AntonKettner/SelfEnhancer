@@ -32,6 +32,7 @@ login_manager.init_app(app)
 login_manager.login_view = 'login'
 
 class User(UserMixin, db.Model):
+    __tablename__ = 'users'  # Explicitly set table name
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(120), nullable=False)
@@ -44,6 +45,7 @@ class User(UserMixin, db.Model):
         return check_password_hash(self.password_hash, password)
 
 class APIKey(db.Model):
+    __tablename__ = 'api_keys'  # Explicitly set table name
     id = db.Column(db.Integer, primary_key=True)
     openai_key = db.Column(db.String(100), nullable=False)
 
@@ -160,14 +162,23 @@ def logout():
     logout_user()
     return redirect(url_for('login'))
 
-if __name__ == '__main__':
+def init_db():
+    """Initialize the database and create admin user"""
     with app.app_context():
+        print("Creating database tables...")
         db.create_all()
-        # Create a default admin user if none exists
+        
+        # Create admin user if it doesn't exist
         if not User.query.filter_by(username='admin').first():
-            user = User(username='admin', is_admin=True)
-            user.set_password('admin')
-            db.session.add(user)
+            print("Creating admin user...")
+            admin = User(username='admin', is_admin=True)
+            admin.set_password('admin')
+            db.session.add(admin)
             db.session.commit()
-    
+            print("Admin user created successfully")
+
+# Initialize database when the module is imported
+init_db()
+
+if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
