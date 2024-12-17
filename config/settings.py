@@ -1,6 +1,6 @@
 import os
 # =========================================PATHS=========================================
-RAG_DB_PATH = os.environ.get('RAG_DB_PATH', '/home/data/chroma')
+RAG_DB_PATH = os.environ.get('RAG_DB_PATH', '/home/site/wwwroot/data/chroma')
 DATA_PATH = os.environ.get('DATA_PATH', os.getcwd())
 # =========================================PARAMS=========================================
 MAX_RAG_VECTOR_NO = 3

@@ -140,14 +140,35 @@ class Enhancement:
             # Parse the response into a list of ideas
             print(colored("Parsing response...", "green"))
             ideas_text = response.content
-            ideas_list = [
-                idea.split('[IDEA]')[1].strip()
-                for idea in ideas_text.split('\n')
-                if '[IDEA]' in idea
-            ]
+            print(colored(f"Raw response content:\n{ideas_text}", "blue"))
+            
+            if not ideas_text:
+                print(colored("Warning: Empty response from LLM", "yellow"))
+                return [], current_usage
+                
+            # Split response into lines and look for [IDEA] tags
+            ideas_lines = [line for line in ideas_text.split('\n') if '[IDEA]' in line]
+            print(colored(f"Found {len(ideas_lines)} lines containing [IDEA] tags", "green"))
+            
+            if not ideas_lines:
+                print(colored("Warning: No [IDEA] tags found in response", "yellow"))
+                # Return the full response as a single idea if no tags found
+                return [ideas_text.strip()], current_usage
+            
+            # Extract ideas from lines containing [IDEA] tags
+            ideas_list = []
+            for line in ideas_lines:
+                try:
+                    idea = line.split('[IDEA]')[1].strip()
+                    ideas_list.append(idea)
+                    print(colored(f"Extracted idea: {idea}", "green"))
+                except IndexError as e:
+                    print(colored(f"Error extracting idea from line: {line}", "yellow"))
+                    continue
             
             if not ideas_list:
-                print(colored("Warning: No ideas were found in the response", "yellow"))
+                print(colored("Warning: Failed to extract any ideas from response", "yellow"))
+                return [ideas_text.strip()], current_usage
             
             return ideas_list, current_usage
         except Exception as e:
