@@ -1,6 +1,6 @@
 ![Self-Enhancing AI Logo](assets/logo.jpg)
 
-# 🧠 Self-Enhancing AI Codebase (v0.10)
+# 🧠 Self-Enhancing AI Codebase (v0.11)
 
 > An experimental framework for exploring AI-driven code optimization
 
