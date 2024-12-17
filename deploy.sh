@@ -5,12 +5,10 @@ set -e
 
 echo "Starting deployment setup..."
 
-# Create persistent data directory if it doesn't exist
-if [ ! -d "/home/data" ]; then
-    echo "Creating /home/data directory..."
-    mkdir -p /home/data
-    chmod 755 /home/data
-fi
+# Create persistent data directory in Azure Web Apps storage
+echo "Creating data directory..."
+mkdir -p /home/site/wwwroot/data
+chmod 755 /home/site/wwwroot/data
 
 # Initialize the SQLite database
 echo "Initializing database..."

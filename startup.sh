@@ -8,10 +8,10 @@ echo "Starting application setup..."
 # Wait for filesystem permissions to be ready
 sleep 10
 
-# Create necessary directories with proper permissions
-echo "Creating data directories..."
-mkdir -p /home/data
-chmod 755 /home/data
+# Create data directory in the persistent storage location
+echo "Creating data directory..."
+mkdir -p /home/site/wwwroot/data
+chmod 755 /home/site/wwwroot/data
 
 # Initialize database and create admin user
 echo "Initializing application..."

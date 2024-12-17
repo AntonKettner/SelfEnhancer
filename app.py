@@ -17,8 +17,9 @@ app.config['SECRET_KEY'] = os.environ.get('FLASK_SECRET_KEY')
 if not app.config['SECRET_KEY']:
     raise ValueError("No SECRET_KEY set for Flask application")
 
-# Use absolute path for SQLite database in Azure
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:////home/data/users.db')
+# Use Azure Web App's persistent storage for SQLite database
+default_db_path = 'sqlite:////home/site/wwwroot/data/users.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', default_db_path)
 
 db = SQLAlchemy(app)
 login_manager = LoginManager()
