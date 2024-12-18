@@ -13,6 +13,7 @@ import os
 import shutil
 import mimetypes
 from config.settings import *
+import glob
 
 load_dotenv()
 
@@ -67,17 +68,12 @@ def load_documents(path):
     
     for filetype in RAG_FILETYPES:
         try:
-            # Use DirectoryLoader with error handling for each file
-            loader = DirectoryLoader(
-                path,
-                glob=f"**/*.{filetype}",
-                recursive=True,
-                show_progress=True,
-                use_multithreading=True
-            )
+            # Get list of files using glob pattern
+            glob_pattern = os.path.join(path, f"**/*.{filetype}")
+            file_list = glob.glob(glob_pattern, recursive=True)
             
-            # Load files with validation
-            for file_path in loader._get_file_list():
+            # Process each file
+            for file_path in file_list:
                 try:
                     # Check if file still exists and is readable
                     if not os.path.exists(file_path):

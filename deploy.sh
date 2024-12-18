@@ -5,10 +5,11 @@ set -e
 
 echo "Starting deployment setup..."
 
-# Create persistent data directories in Azure Web Apps storage
+# Create all necessary directories in Azure Web Apps storage
 echo "Creating data directories..."
 mkdir -p /home/site/wwwroot/data/sqlite
 mkdir -p /home/site/wwwroot/data/chroma
+mkdir -p /home/site/wwwroot/data/uploads
 chmod -R 755 /home/site/wwwroot/data
 
 echo "Directory structure:"
@@ -19,11 +20,14 @@ echo "Initializing database..."
 python3 << END
 import os
 import sys
-from app import app, db, User, init_db
-from werkzeug.security import generate_password_hash
+from app import create_app
+from app_src.models import db
+from app_src.auth import init_db
 
 print("Python initialization starting...")
 print(f"Current working directory: {os.getcwd()}")
+
+app = create_app()
 print(f"Database URL: {app.config['SQLALCHEMY_DATABASE_URI']}")
 print(f"ChromaDB Path: {os.environ.get('RAG_DB_PATH')}")
 
@@ -39,7 +43,7 @@ if not os.path.exists(db_dir):
 
 try:
     print("Initializing database...")
-    init_db()
+    init_db(app)
     print("Database initialization completed successfully")
 except Exception as e:
     print(f"Error during database initialization: {str(e)}", file=sys.stderr)
