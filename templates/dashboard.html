@@ -17,6 +17,8 @@
             color: white;
             text-decoration: none;
             border-radius: 4px;
+            border: none;
+            cursor: pointer;
         }
         .button:hover {
             background-color: #45a049;
@@ -48,6 +50,15 @@
             background-color: #f8d7da;
             color: #721c24;
         }
+        .upload-section {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+        .file-input {
+            margin: 10px 0;
+        }
     </style>
 </head>
 <body>
@@ -66,34 +77,62 @@
     {% endif %}
 
     <a href="{{ url_for('user_settings') }}" class="button settings">User Settings</a>
-    
+    <a href="{{ url_for('logout') }}" class="button logout">Logout</a>
+
     {% if api_key_configured %}
-        <button onclick="runEnhancement()" class="button">Run Enhancement</button>
+        <div class="upload-section">
+            <h3>Get Enhancement Ideas for Your Codebase</h3>
+            <form id="uploadForm" enctype="multipart/form-data">
+                <div class="file-input">
+                    <input type="file" id="codebase" name="codebase" accept=".zip,.py,.txt,.md" required>
+                    <small>Upload a ZIP file containing your codebase or a single file (.py, .txt, .md)</small>
+                </div>
+                <button type="submit" class="button" onclick="handleUploadAndEnhancement(event)">Get Enhancement Ideas</button>
+            </form>
+        </div>
     {% else %}
         <p>Please configure the API key first.</p>
     {% endif %}
 
-    <a href="{{ url_for('logout') }}" class="button logout">Logout</a>
-
     <div id="output" class="output"></div>
 
     <script>
-        function runEnhancement() {
+        async function handleUploadAndEnhancement(event) {
+            event.preventDefault();
             const output = document.getElementById('output');
-            output.textContent = 'Starting enhancement process...\n';
+            const formData = new FormData(document.getElementById('uploadForm'));
             
-            const eventSource = new EventSource('/run-enhancement');
+            output.textContent = 'Uploading file...\n';
             
-            eventSource.onmessage = function(event) {
-                output.textContent += event.data + '\n';
-                output.scrollTop = output.scrollHeight;
-            };
-            
-            eventSource.onerror = function(event) {
-                console.error('EventSource failed:', event);
-                eventSource.close();
-                output.textContent += 'Enhancement process completed or encountered an error.\n';
-            };
+            try {
+                // First upload the file
+                const uploadResponse = await fetch('/upload-codebase', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!uploadResponse.ok) {
+                    throw new Error('Upload failed');
+                }
+                
+                output.textContent += 'File uploaded successfully. Starting enhancement process...\n';
+                
+                // Then start the enhancement process
+                const eventSource = new EventSource('/run-enhancement');
+                
+                eventSource.onmessage = function(event) {
+                    output.textContent += event.data + '\n';
+                    output.scrollTop = output.scrollHeight;
+                };
+                
+                eventSource.onerror = function(event) {
+                    console.error('EventSource failed:', event);
+                    eventSource.close();
+                    output.textContent += 'Enhancement process completed or encountered an error.\n';
+                };
+            } catch (error) {
+                output.textContent += `Error: ${error.message}\n`;
+            }
         }
     </script>
 </body>

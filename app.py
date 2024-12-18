@@ -6,7 +6,11 @@ from flask import Flask, render_template, request, redirect, url_for, jsonify, R
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
 import os
+import shutil
+import tempfile
+import zipfile
 from enhancer import Enhancement
 from io import StringIO
 from threading import Thread
@@ -26,6 +30,11 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', default_d
 db_dir = os.path.dirname(app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', ''))
 os.makedirs(db_dir, exist_ok=True)
 os.chmod(db_dir, 0o755)
+
+# Configure upload settings
+ALLOWED_EXTENSIONS = {'zip', 'py', 'txt', 'md'}
+UPLOAD_FOLDER = '/home/site/wwwroot/data/uploads'
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 db = SQLAlchemy(app)
 login_manager = LoginManager()
@@ -57,6 +66,9 @@ def load_user(user_id):
 def get_api_key():
     api_key = APIKey.query.first()
     return api_key.openai_key if api_key else None
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 class OutputCapture:
     def __init__(self, queue):
@@ -105,6 +117,15 @@ def capture_output(queue):
             output += f"\nAPI Usage:\n{enhancement.usage}"
             
             queue.put(output)
+
+            # Clean up the temporary upload directory
+            upload_dir = os.environ.get('DATA_PATH')
+            if upload_dir and upload_dir.startswith(UPLOAD_FOLDER):
+                try:
+                    shutil.rmtree(upload_dir)
+                except Exception as e:
+                    print(f"Error cleaning up upload directory: {e}")
+
     except Exception as e:
         error_msg = f"Error: {str(e)}\n"
         error_msg += f"Traceback:\n{traceback.format_exc()}\n"
@@ -142,6 +163,42 @@ def dashboard():
     return render_template('dashboard.html', 
                          is_admin=current_user.is_admin,
                          api_key_configured=bool(api_key))
+
+@app.route('/upload-codebase', methods=['POST'])
+@login_required
+def upload_codebase():
+    if 'codebase' not in request.files:
+        return jsonify({'error': 'No file provided'}), 400
+    
+    file = request.files['codebase']
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
+    
+    if not allowed_file(file.filename):
+        return jsonify({'error': 'Invalid file type'}), 400
+
+    try:
+        # Create a unique temporary directory for this upload
+        temp_dir = tempfile.mkdtemp(dir=UPLOAD_FOLDER)
+        filename = secure_filename(file.filename)
+        file_path = os.path.join(temp_dir, filename)
+        file.save(file_path)
+
+        # If it's a zip file, extract it
+        if filename.endswith('.zip'):
+            extract_dir = os.path.join(temp_dir, 'extracted')
+            os.makedirs(extract_dir, exist_ok=True)
+            with zipfile.ZipFile(file_path, 'r') as zip_ref:
+                zip_ref.extractall(extract_dir)
+            os.environ['DATA_PATH'] = extract_dir
+        else:
+            # For single files, use the temp directory as DATA_PATH
+            os.environ['DATA_PATH'] = temp_dir
+
+        return jsonify({'message': 'File uploaded successfully'}), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api-key', methods=['GET', 'POST'])
 @login_required
