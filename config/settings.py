@@ -3,7 +3,7 @@ import os
 # =========================================PATHS=========================================
 RAG_DB_PATH = os.environ.get('RAG_DB_PATH', '/home/site/wwwroot/data/chroma')
 DATA_PATH = os.environ.get('DATA_PATH', os.getcwd())
-UPLOADS_PATH = os.path.join(DATA_PATH, 'uploads')
+UPLOADS_PATH = os.path.join(DATA_PATH, 'data', 'uploads')
 
 # =========================================PARAMS=========================================
 MAX_RAG_VECTOR_NO = 3

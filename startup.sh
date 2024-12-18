@@ -5,11 +5,6 @@ set -e
 
 echo "Starting application setup..."
 
-# Install system dependencies
-echo "Installing system dependencies..."
-apt-get update
-apt-get install -y libmagic1 libmagic-dev
-
 # Wait for filesystem permissions to be ready
 sleep 10
 

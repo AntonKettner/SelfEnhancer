@@ -11,10 +11,13 @@ import openai
 from dotenv import load_dotenv
 import os
 import shutil
-import magic
+import mimetypes
 from config.settings import *
 
 load_dotenv()
+
+# Initialize mimetypes
+mimetypes.init()
 
 def generate_RAG_DB(path=UPLOADS_PATH):
     print(f"Generating RAG DB with path: {path}")
@@ -39,12 +42,28 @@ def generate_RAG_DB(path=UPLOADS_PATH):
     db = save_to_chroma(chunks)
     return db
 
+def is_text_file(file_path, filetype):
+    """Determine if a file is a text file using mimetypes"""
+    # First check the file extension
+    if filetype in RAG_FILETYPES:
+        return True
+        
+    # Then check mimetype
+    mime_type, _ = mimetypes.guess_type(file_path)
+    if mime_type and ('text' in mime_type or 'javascript' in mime_type or 'json' in mime_type or 'xml' in mime_type):
+        return True
+        
+    # Finally, try to read the file as text
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            f.read(1024)  # Try reading first 1KB
+        return True
+    except UnicodeDecodeError:
+        return False
+
 def load_documents(path):
     print(f"Loading documents from: {path}")
     documents = []
-    
-    # Initialize magic for file type detection
-    mime = magic.Magic(mime=True)
     
     for filetype in RAG_FILETYPES:
         try:
@@ -65,9 +84,8 @@ def load_documents(path):
                         print(f"File no longer exists: {file_path}")
                         continue
                         
-                    # Verify file type
-                    detected_type = mime.from_file(file_path)
-                    if not any(t in detected_type for t in ['text', 'python', 'javascript', 'json', 'xml', 'html']):
+                    # Verify file is a text file
+                    if not is_text_file(file_path, filetype):
                         print(f"Skipping non-text file: {file_path}")
                         continue
                     
