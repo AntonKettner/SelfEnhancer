@@ -73,11 +73,11 @@
     {% endwith %}
 
     {% if is_admin %}
-        <a href="{{ url_for('manage_api_key') }}" class="button">Manage API Key</a>
+        <a href="{{ url_for('auth.manage_api_key') }}" class="button">Manage API Key</a>
     {% endif %}
 
-    <a href="{{ url_for('user_settings') }}" class="button settings">User Settings</a>
-    <a href="{{ url_for('logout') }}" class="button logout">Logout</a>
+    <a href="{{ url_for('auth.user_settings') }}" class="button settings">User Settings</a>
+    <a href="{{ url_for('auth.logout') }}" class="button logout">Logout</a>
 
     {% if api_key_configured %}
         <div class="upload-section">
