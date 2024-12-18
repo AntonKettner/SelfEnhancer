@@ -18,18 +18,18 @@ from data.prompts import *
 
 class Enhancement:
     def __init__(self):
-        print(colored(f"Initializing Enhancement with DATA_PATH: {DATA_PATH}", "green"))
+        print(colored(f"Initializing Enhancement with DATA_PATH: {UPLOADS_PATH}", "green"))
         try:
-            self.codebase = self.get_codebase(DATA_PATH)
-            self.structure = self.generate_structure_tree(DATA_PATH)
+            self.codebase = self.get_codebase(UPLOADS_PATH)
+            self.structure = self.generate_structure_tree(UPLOADS_PATH)
             print(colored("Generating RAG DB...", "green"))
-            self.db = generate_RAG_DB(DATA_PATH)
+            self.db = generate_RAG_DB(UPLOADS_PATH)
         except Exception as e:
             print(colored(f"Error during initialization: {str(e)}", "red"))
             print(colored(f"Traceback: {traceback.format_exc()}", "red"))
             raise
 
-    def update_rag_db(self, path=DATA_PATH):
+    def update_rag_db(self, path=UPLOADS_PATH):
         print(colored(f"Creating RAG DB at path: {path}", "green"))
         try:
             self.db = generate_RAG_DB(path)

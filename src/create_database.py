@@ -11,19 +11,22 @@ import openai
 from dotenv import load_dotenv
 import os
 import shutil
+import magic
 from config.settings import *
 
 load_dotenv()
 
-
-#! Add check for existing database -> save saving times of all docs and their lengths to temp dir
-def generate_RAG_DB(path=DATA_PATH):
+def generate_RAG_DB(path=UPLOADS_PATH):
     print(f"Generating RAG DB with path: {path}")
     print(f"RAG_DB_PATH: {RAG_DB_PATH}")
     
     # Ensure RAG_DB_PATH directory exists with proper permissions
     os.makedirs(RAG_DB_PATH, exist_ok=True)
     os.chmod(RAG_DB_PATH, 0o755)
+    
+    # Ensure uploads directory exists with proper permissions
+    os.makedirs(UPLOADS_PATH, exist_ok=True)
+    os.chmod(UPLOADS_PATH, 0o755)
     
     documents = load_documents(path)
     if not documents:
@@ -36,24 +39,67 @@ def generate_RAG_DB(path=DATA_PATH):
     db = save_to_chroma(chunks)
     return db
 
-
 def load_documents(path):
     print(f"Loading documents from: {path}")
-    # Load Python, text, and markdown files from all subdirectories
     documents = []
+    
+    # Initialize magic for file type detection
+    mime = magic.Magic(mime=True)
+    
     for filetype in RAG_FILETYPES:
         try:
-            loader = DirectoryLoader(path, glob=f"**/*.{filetype}", recursive=True)
-            single_type_docs = loader.load()
-            # Validate documents aren't empty
-            single_type_docs = [doc for doc in single_type_docs if doc.page_content.strip()]
-            documents.extend(single_type_docs)
-            print(f"Loaded {len(single_type_docs)} {filetype} files")
+            # Use DirectoryLoader with error handling for each file
+            loader = DirectoryLoader(
+                path,
+                glob=f"**/*.{filetype}",
+                recursive=True,
+                show_progress=True,
+                use_multithreading=True
+            )
+            
+            # Load files with validation
+            for file_path in loader._get_file_list():
+                try:
+                    # Check if file still exists and is readable
+                    if not os.path.exists(file_path):
+                        print(f"File no longer exists: {file_path}")
+                        continue
+                        
+                    # Verify file type
+                    detected_type = mime.from_file(file_path)
+                    if not any(t in detected_type for t in ['text', 'python', 'javascript', 'json', 'xml', 'html']):
+                        print(f"Skipping non-text file: {file_path}")
+                        continue
+                    
+                    # Read file content
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        content = f.read().strip()
+                        if not content:
+                            print(f"Skipping empty file: {file_path}")
+                            continue
+                            
+                        # Create document with metadata
+                        doc = Document(
+                            page_content=content,
+                            metadata={
+                                'source': file_path,
+                                'filetype': filetype,
+                                'size': len(content)
+                            }
+                        )
+                        documents.append(doc)
+                        print(f"Successfully loaded: {file_path}")
+                        
+                except Exception as e:
+                    print(f"Error processing file {file_path}: {str(e)}")
+                    continue
+                    
         except Exception as e:
             print(f"Error loading {filetype} files: {str(e)}")
             continue
+            
+    print(f"Successfully loaded {len(documents)} documents")
     return documents
-
 
 def split_text(documents: list):
     print(f"Splitting {len(documents)} documents")
@@ -90,7 +136,6 @@ def split_text(documents: list):
     except Exception as e:
         print(f"Error splitting documents: {str(e)}")
         return []
-
 
 def save_to_chroma(chunks: list):
     print(f"Saving to ChromaDB at: {RAG_DB_PATH}")

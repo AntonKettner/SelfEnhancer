@@ -5,6 +5,11 @@ set -e
 
 echo "Starting application setup..."
 
+# Install system dependencies
+echo "Installing system dependencies..."
+apt-get update
+apt-get install -y libmagic1 libmagic-dev
+
 # Wait for filesystem permissions to be ready
 sleep 10
 
@@ -12,6 +17,7 @@ sleep 10
 echo "Creating data directories..."
 mkdir -p /home/site/wwwroot/data/sqlite
 mkdir -p /home/site/wwwroot/data/chroma
+mkdir -p /home/site/wwwroot/data/uploads
 chmod -R 755 /home/site/wwwroot/data
 
 # Set environment variables for database paths
