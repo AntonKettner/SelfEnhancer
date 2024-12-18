@@ -31,9 +31,8 @@ db_dir = os.path.dirname(app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:/
 os.makedirs(db_dir, exist_ok=True)
 os.chmod(db_dir, 0o755)
 
-# Configure upload settings
-ALLOWED_EXTENSIONS = {'zip', 'py', 'txt', 'md'}
-UPLOAD_FOLDER = '/home/site/wwwroot/data/uploads'
+# Configure upload settings - store in project directory
+UPLOAD_FOLDER = os.path.join(os.getcwd(), 'data', 'uploads')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 db = SQLAlchemy(app)
@@ -68,7 +67,7 @@ def get_api_key():
     return api_key.openai_key if api_key else None
 
 def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'zip', 'py', 'txt', 'md'}
 
 class OutputCapture:
     def __init__(self, queue):
@@ -86,7 +85,7 @@ class OutputCapture:
             self.queue.put(text)
             self.buffer = StringIO()
 
-def capture_output(queue):
+def capture_output(queue, upload_path):
     old_stdout = sys.stdout
     old_stderr = sys.stderr
     output_capture = OutputCapture(queue)
@@ -103,6 +102,7 @@ def capture_output(queue):
                 return
 
             os.environ['OPENAI_API_KEY'] = api_key
+            os.environ['DATA_PATH'] = upload_path
             
             queue.put("Initializing Enhancement process...\n")
             enhancement = Enhancement()
@@ -117,14 +117,6 @@ def capture_output(queue):
             output += f"\nAPI Usage:\n{enhancement.usage}"
             
             queue.put(output)
-
-            # Clean up the temporary upload directory
-            upload_dir = os.environ.get('DATA_PATH')
-            if upload_dir and upload_dir.startswith(UPLOAD_FOLDER):
-                try:
-                    shutil.rmtree(upload_dir)
-                except Exception as e:
-                    print(f"Error cleaning up upload directory: {e}")
 
     except Exception as e:
         error_msg = f"Error: {str(e)}\n"
@@ -190,14 +182,17 @@ def upload_codebase():
             os.makedirs(extract_dir, exist_ok=True)
             with zipfile.ZipFile(file_path, 'r') as zip_ref:
                 zip_ref.extractall(extract_dir)
-            os.environ['DATA_PATH'] = extract_dir
+            upload_path = extract_dir
         else:
-            # For single files, use the temp directory as DATA_PATH
-            os.environ['DATA_PATH'] = temp_dir
+            upload_path = temp_dir
 
+        # Store the upload path in the session for cleanup later
+        session['upload_path'] = upload_path
         return jsonify({'message': 'File uploaded successfully'}), 200
 
     except Exception as e:
+        if os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir)
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api-key', methods=['GET', 'POST'])
@@ -258,22 +253,33 @@ def user_settings():
 @app.route('/run-enhancement')
 @login_required
 def run_enhancement():
+    upload_path = session.get('upload_path')
+    if not upload_path:
+        return Response("data: Error: No uploaded files found\n\n", mimetype='text/event-stream')
+
     def generate():
         output_queue = queue.Queue()
-        thread = Thread(target=capture_output, args=(output_queue,))
+        thread = Thread(target=capture_output, args=(output_queue, upload_path))
         thread.start()
         
-        while True:
-            try:
-                output = output_queue.get(timeout=1)
-                # Ensure output ends with newline for proper streaming
-                if not output.endswith('\n'):
-                    output += '\n'
-                yield f"data: {output}\n\n"
-            except queue.Empty:
-                if not thread.is_alive():
-                    break
-                yield "data: Processing...\n\n"
+        try:
+            while True:
+                try:
+                    output = output_queue.get(timeout=1)
+                    if not output.endswith('\n'):
+                        output += '\n'
+                    yield f"data: {output}\n\n"
+                except queue.Empty:
+                    if not thread.is_alive():
+                        break
+                    yield "data: Processing...\n\n"
+        finally:
+            # Only clean up after the enhancement process is complete
+            if os.path.exists(upload_path):
+                parent_dir = os.path.dirname(upload_path)
+                if parent_dir.startswith(UPLOAD_FOLDER):
+                    shutil.rmtree(parent_dir)
+            session.pop('upload_path', None)
     
     return Response(generate(), mimetype='text/event-stream')
 
