@@ -27,6 +27,7 @@ class OutputCapture:
 
 
 def capture_output(queue, app):
+    """Capture output from the enhancement process."""
     old_stdout = sys.stdout
     old_stderr = sys.stderr
     output_capture = OutputCapture(queue)
@@ -34,19 +35,37 @@ def capture_output(queue, app):
     sys.stderr = output_capture
 
     try:
-        # Get metrics from app context
-        metrics = app.extensions["prometheus_metrics"]
-        api_latency = metrics.histogram(
-            "openai_api_latency_seconds",
-            "Time spent waiting for OpenAI API",
-            buckets=[0.5, 1, 2, 5, 10, 30, 60],
-        )
-        api_errors = metrics.counter("openai_api_errors", "Number of OpenAI API errors")
+        # Initialize metrics variables
+        api_latency = None
+        api_errors = None
 
-        api_key = get_api_key()
+        # Safely get metrics if available
+        try:
+            metrics = getattr(app, "extensions", {}).get("prometheus_metrics")
+            if metrics:
+                api_latency = metrics.histogram(
+                    "openai_api_latency_seconds",
+                    "Time spent waiting for OpenAI API",
+                    buckets=[0.5, 1, 2, 5, 10, 30, 60],
+                )
+                api_errors = metrics.counter("openai_api_errors", "Number of OpenAI API errors")
+        except Exception as e:
+            queue.put(f"Metrics initialization warning: {str(e)}\n")
+
+        # Get API key using the app context
+        api_key = None
+        try:
+            api_key = get_api_key()
+        except Exception as e:
+            queue.put(f"Error getting API key: {str(e)}\n")
+            if api_errors:
+                api_errors.inc()
+            return
+
         if not api_key:
-            queue.put("Error: OpenAI API key not configured")
-            api_errors.inc()
+            queue.put("Error: OpenAI API key not configured\n")
+            if api_errors:
+                api_errors.inc()
             return
 
         os.environ["OPENAI_API_KEY"] = api_key
@@ -56,15 +75,18 @@ def capture_output(queue, app):
             enhancement = Enhancement()
             queue.put("Generating improvement ideas...\n")
 
-            # Measure API latency
+            # Measure API latency if metrics are available
             start_time = time.time()
             try:
                 enhancement.ideas, enhancement.usage = enhancement.generate_improvement_ideas()
-                api_latency.observe(time.time() - start_time)
+                if api_latency:
+                    api_latency.observe(time.time() - start_time)
             except Exception as e:
-                api_errors.inc()
+                if api_errors:
+                    api_errors.inc()
                 raise
 
+            # Format and send output
             output = "\nIDEAS FOR CODEBASE ENHANCEMENT:\n\n"
             for index, idea in enumerate(enhancement.ideas):
                 output += f"{index+1}: {idea}\n\n"
@@ -74,18 +96,18 @@ def capture_output(queue, app):
         except Exception as e:
             error_msg = f"Error in enhancement process: {str(e)}\n"
             queue.put(error_msg)
+
             import traceback
 
             trace = traceback.format_exc()
             queue.put(f"Traceback:\n{trace}\n")
 
-            # Send error to Sentry if available
             if "sentry_sdk" in sys.modules:
                 import sentry_sdk
 
                 sentry_sdk.capture_exception(e)
 
-            raise  # Re-raise to trigger error metrics in routes.py
+            raise
 
         finally:
             # Clean up the temporary upload directory
@@ -104,18 +126,18 @@ def capture_output(queue, app):
     except Exception as e:
         error_msg = f"Error in output capture: {str(e)}\n"
         queue.put(error_msg)
+
         import traceback
 
         trace = traceback.format_exc()
         queue.put(f"Traceback:\n{trace}\n")
 
-        # Send error to Sentry if available
         if "sentry_sdk" in sys.modules:
             import sentry_sdk
 
             sentry_sdk.capture_exception(e)
 
-        raise  # Re-raise to trigger error metrics in routes.py
+        raise
 
     finally:
         sys.stdout = old_stdout

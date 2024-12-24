@@ -79,68 +79,87 @@ def upload_codebase():
 @main_bp.route("/run-enhancement")
 @login_required
 def run_enhancement():
+    from flask import copy_current_request_context
+
     output_queue = queue.Queue()
-    app = current_app._get_current_object()
     done_event = Event()
     start_time = time.time()
     error_occurred = False
 
-    # Get metrics from app context
-    metrics = app.extensions["prometheus_metrics"]
-    enhancement_total = metrics.counter("enhancement_total")
-    enhancement_errors = metrics.counter("enhancement_errors")
-    enhancement_duration = metrics.histogram("enhancement_duration_seconds")
+    # Get app before entering the thread
+    app = current_app._get_current_object()
 
-    # Increment total enhancements counter
-    enhancement_total.inc()
+    # Initialize metrics variables
+    metrics_enabled = False
+    enhancement_total = None
+    enhancement_errors = None
+    enhancement_duration = None
 
+    # Safely get metrics if available
+    try:
+        if hasattr(app, "extensions") and "prometheus_metrics" in app.extensions:
+            metrics = app.extensions["prometheus_metrics"]
+            enhancement_total = metrics.counter("enhancement_total")
+            enhancement_errors = metrics.counter("enhancement_errors")
+            enhancement_duration = metrics.histogram("enhancement_duration_seconds")
+            enhancement_total.inc()
+            metrics_enabled = True
+    except Exception as e:
+        # Log metrics error but continue processing
+        print(f"Metrics initialization error: {str(e)}")
+        metrics_enabled = False
+
+    @copy_current_request_context
     def process_enhancement():
-        with app.app_context():
-            try:
-                capture_output(output_queue, app)
-            except Exception as e:
-                nonlocal error_occurred
-                error_occurred = True
+        nonlocal error_occurred
+        try:
+            capture_output(output_queue, app)
+        except Exception as e:
+            error_occurred = True
+            if metrics:
                 enhancement_errors.inc()
-                raise
-            finally:
-                done_event.set()
-                # Record duration
+            raise
+        finally:
+            done_event.set()
+            if metrics:
                 duration = time.time() - start_time
                 enhancement_duration.observe(duration)
 
     def generate():
+        # Start processing in a thread
         thread = Thread(target=process_enhancement)
         thread.daemon = True
         thread.start()
 
-        while not done_event.is_set() or not output_queue.empty():
-            try:
-                output = output_queue.get(timeout=0.1)
-                if output:
-                    if not output.endswith("\n"):
-                        output += "\n"
-                    yield f"data: {output}\n\n"
-            except queue.Empty:
-                # Send a keep-alive message every second
-                yield "data: Processing...\n\n"
-                time.sleep(0.1)
-            except Exception as e:
+        try:
+            while not done_event.is_set() or not output_queue.empty():
+                try:
+                    output = output_queue.get(timeout=0.1)
+                    if output:
+                        if not output.endswith("\n"):
+                            output += "\n"
+                        yield f"data: {output}\n\n"
+                except queue.Empty:
+                    yield "data: Processing...\n\n"
+                    time.sleep(0.1)
+
+            # Final check for any remaining messages
+            while not output_queue.empty():
+                try:
+                    output = output_queue.get_nowait()
+                    if output:
+                        if not output.endswith("\n"):
+                            output += "\n"
+                        yield f"data: {output}\n\n"
+                except queue.Empty:
+                    break
+
+        except Exception as e:
+            if metrics:
                 enhancement_errors.inc()
-                yield f"data: Error: {str(e)}\n\n"
-                break
+            yield f"data: Error: {str(e)}\n\n"
 
-        # Final check for any remaining messages
-        while not output_queue.empty():
-            try:
-                output = output_queue.get_nowait()
-                if output:
-                    if not output.endswith("\n"):
-                        output += "\n"
-                    yield f"data: {output}\n\n"
-            except queue.Empty:
-                break
-
+    # Use stream_with_context to maintain request context
     from flask import stream_with_context
 
     return Response(

@@ -32,5 +32,21 @@ echo "Running deployment script..."
 # Start gunicorn with configuration file
 echo "Starting gunicorn..."
 PORT="${WEBSITES_PORT:-8000}"
-export GUNICORN_CMD_ARGS="--bind=0.0.0.0:${PORT} --config=gunicorn.conf.py --preload --max-requests 1000 --max-requests-jitter 50"
+
+# Set production environment
+export FLASK_ENV=production
+export FLASK_DEBUG=0
+
+# Set Gunicorn environment variables
+export GUNICORN_CMD_ARGS="--bind=0.0.0.0:${PORT} --config=gunicorn.conf.py"
+
+# Ensure proper SSL configuration for Azure
+if [ -n "$WEBSITE_LOAD_CERTIFICATES" ]; then
+    echo "SSL certificates detected, configuring HTTPS..."
+    export GUNICORN_CMD_ARGS="$GUNICORN_CMD_ARGS --certfile=/etc/ssl/certs/azure.crt --keyfile=/etc/ssl/private/azure.key"
+fi
+
+echo "Starting Gunicorn with command args: $GUNICORN_CMD_ARGS"
+
+# Start Gunicorn with our application
 exec gunicorn wsgi:application

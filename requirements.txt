@@ -24,6 +24,12 @@ greenlet==3.0.3  # Required by gevent
 # Monitoring and Error Handling
 sentry-sdk[flask]==1.40.6  # For error tracking
 prometheus-flask-exporter==0.23.0  # For metrics
+prometheus_client==0.20.0  # Required for metrics storage
+pyOpenSSL==24.0.0  # For SSL support
+
+# Security
+cryptography==42.0.2  # Required for SSL
+certifi==2024.2.2  # For certificate verification
 
 # Force newer SQLite for ChromaDB
 pysqlite3-binary

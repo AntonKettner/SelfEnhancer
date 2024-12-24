@@ -49,18 +49,33 @@ def create_app():
     login_manager.init_app(app)
     login_manager.login_view = "auth.login"
 
-    # Initialize Prometheus metrics
-    metrics = PrometheusMetrics(app)
-    metrics.info("app_info", "Application info", version="1.0.0")
+    # Initialize Prometheus metrics if in production
+    if not app.debug:
+        try:
+            metrics = PrometheusMetrics(app)
+            metrics.info("app_info", "Application info", version="1.0.0")
 
-    # Add custom metrics
-    metrics.counter("enhancement_total", "Number of enhancement processes started")
-    metrics.counter("enhancement_errors", "Number of enhancement process errors")
-    metrics.histogram(
-        "enhancement_duration_seconds",
-        "Time spent processing enhancements",
-        buckets=[30, 60, 120, 180, 240, 300, 600],
-    )
+            # Add custom metrics
+            metrics.counter("enhancement_total", "Number of enhancement processes started")
+            metrics.counter("enhancement_errors", "Number of enhancement process errors")
+            metrics.histogram(
+                "enhancement_duration_seconds",
+                "Time spent processing enhancements",
+                buckets=[30, 60, 120, 180, 240, 300, 600],
+            )
+
+            # Add OpenAI API metrics
+            metrics.histogram(
+                "openai_api_latency_seconds",
+                "Time spent waiting for OpenAI API",
+                buckets=[0.5, 1, 2, 5, 10, 30, 60],
+            )
+            metrics.counter("openai_api_errors", "Number of OpenAI API errors")
+
+            print("Prometheus metrics initialized successfully")
+        except Exception as e:
+            print(f"Warning: Failed to initialize Prometheus metrics: {str(e)}")
+            # Continue without metrics in case of initialization failure
 
     # Register blueprints
     app.register_blueprint(auth_bp)
