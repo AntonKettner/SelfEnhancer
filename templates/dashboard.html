@@ -1,13 +1,55 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Dashboard</title>
+    <title>SelfEnhancer Demo - get-enhancement-ideas</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            overflow: hidden;
+        }
+        .nav-bar {
+            background-color: #f8f9fa;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #ddd;
+        }
+        .nav-title {
+            font-size: 1.5em;
+            margin: 0;
+        }
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        .main-content {
+            display: flex;
+            height: calc(100vh - 60px);
             padding: 20px;
+            gap: 20px;
+            box-sizing: border-box;
+        }
+        .main-section {
+            flex: 2;
+            overflow-y: auto;
+            padding: 20px;
+            background-color: white;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .log-section {
+            flex: 1;
+            background-color: rgba(248, 249, 250, 0.9);
+            padding: 15px;
+            border-radius: 4px;
+            overflow-y: auto;
+            font-family: monospace;
+            white-space: pre-wrap;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         .button {
             display: inline-block;
@@ -35,14 +77,6 @@
         .button.settings:hover {
             background-color: #0b7dda;
         }
-        .output {
-            margin-top: 20px;
-            padding: 10px;
-            background-color: #f8f9fa;
-            border-radius: 4px;
-            white-space: pre-wrap;
-            font-family: monospace;
-        }
         .flash-message {
             padding: 10px;
             margin-bottom: 20px;
@@ -59,11 +93,42 @@
         .file-input {
             margin: 10px 0;
         }
+        .enhancement-list {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .enhancement-item {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .enhancement-item h3 {
+            margin-top: 0;
+            color: #2196F3;
+        }
+        .enhancement-item pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
     </style>
 </head>
 <body>
-    <h1>Dashboard</h1>
-    
+    <div class="nav-bar">
+        <h1 class="nav-title">SelfEnhancer Demo - get-enhancement-ideas</h1>
+        <div class="nav-buttons">
+            {% if is_admin %}
+                <a href="{{ url_for('auth.manage_api_key') }}" class="button">Manage API Key</a>
+            {% endif %}
+            <a href="{{ url_for('auth.user_settings') }}" class="button settings">User Settings</a>
+            <a href="{{ url_for('auth.logout') }}" class="button logout">Logout</a>
+        </div>
+    </div>
+
     {% with messages = get_flashed_messages() %}
         {% if messages %}
             {% for message in messages %}
@@ -72,29 +137,26 @@
         {% endif %}
     {% endwith %}
 
-    {% if is_admin %}
-        <a href="{{ url_for('auth.manage_api_key') }}" class="button">Manage API Key</a>
-    {% endif %}
-
-    <a href="{{ url_for('auth.user_settings') }}" class="button settings">User Settings</a>
-    <a href="{{ url_for('auth.logout') }}" class="button logout">Logout</a>
-
-    {% if api_key_configured %}
-        <div class="upload-section">
-            <h3>Get Enhancement Ideas for Your Codebase</h3>
-            <form id="uploadForm" enctype="multipart/form-data">
-                <div class="file-input">
-                    <input type="file" id="codebase" name="codebase" accept=".zip,.py,.txt,.md" required>
-                    <small>Upload a ZIP file containing your codebase or a single file (.py, .txt, .md)</small>
-                </div>
-                <button type="submit" class="button" onclick="handleUploadAndEnhancement(event)">Get Enhancement Ideas</button>
-            </form>
+    <div class="main-content">
+        <div class="main-section">
+            <div id="enhancement-ideas"></div>
+            {% if api_key_configured %}
+            <div class="upload-section">
+                <h3>Get Enhancement Ideas for Your Codebase</h3>
+                <form id="uploadForm" enctype="multipart/form-data">
+                    <div class="file-input">
+                        <input type="file" id="codebase" name="codebase" accept=".zip,.py,.txt,.md" required>
+                        <small>Upload a ZIP file containing your codebase or a single file (.py, .txt, .md)</small>
+                    </div>
+                    <button type="submit" class="button" onclick="handleUploadAndEnhancement(event)">Get Enhancement Ideas</button>
+                </form>
+            </div>
+            {% else %}
+            <p>Please configure the API key first.</p>
+            {% endif %}
         </div>
-    {% else %}
-        <p>Please configure the API key first.</p>
-    {% endif %}
-
-    <div id="output" class="output"></div>
+        <div class="log-section" id="output"></div>
+    </div>
 
     <script>
         async function handleUploadAndEnhancement(event) {
@@ -121,8 +183,32 @@
                 const eventSource = new EventSource('/run-enhancement');
                 
                 eventSource.onmessage = function(event) {
-                    output.textContent += event.data + '\n';
-                    output.scrollTop = output.scrollHeight;
+                    const logSection = document.getElementById('output');
+                    const enhancementSection = document.getElementById('enhancement-ideas');
+                    logSection.textContent += event.data + '\n';
+                    logSection.scrollTop = logSection.scrollHeight;
+
+                    // Try to parse the data as JSON to check if it's the final enhancement ideas
+                    try {
+                        const jsonData = JSON.parse(event.data);
+                        if (jsonData.enhancements) {
+                            // Format and display enhancement ideas
+                            enhancementSection.innerHTML = `
+                                <h2>Enhancement Ideas</h2>
+                                <div class="enhancement-list">
+                                    ${jsonData.enhancements.map((idea, index) => `
+                                        <div class="enhancement-item">
+                                            <h3>${index + 1}. ${idea.title || 'Enhancement Idea'}</h3>
+                                            <p>${idea.description || idea}</p>
+                                            ${idea.implementation ? `<pre><code>${idea.implementation}</code></pre>` : ''}
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            `;
+                        }
+                    } catch (e) {
+                        // Not JSON data, just log output
+                    }
                 };
                 
                 eventSource.onerror = function(event) {
