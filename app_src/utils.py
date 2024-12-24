@@ -86,12 +86,22 @@ def capture_output(queue, app):
                     api_errors.inc()
                 raise
 
-            # Format and send output
-            output = "\nIDEAS FOR CODEBASE ENHANCEMENT:\n\n"
+            # Send log output first
+            queue.put("\nIDEAS FOR CODEBASE ENHANCEMENT:\n\n")
             for index, idea in enumerate(enhancement.ideas):
-                output += f"{index+1}: {idea}\n\n"
-            output += f"\nAPI Usage:\n{enhancement.usage}"
-            queue.put(output)
+                queue.put(f"{index+1}: {idea}\n\n")
+            queue.put(f"\nAPI Usage:\n{enhancement.usage}\n")
+
+            # Send ideas in JSON format for frontend display
+            import json
+
+            ideas_json = {
+                "enhancements": [
+                    {"title": f"Enhancement {i+1}", "description": idea}
+                    for i, idea in enumerate(enhancement.ideas)
+                ]
+            }
+            queue.put(json.dumps(ideas_json))
 
         except Exception as e:
             error_msg = f"Error in enhancement process: {str(e)}\n"

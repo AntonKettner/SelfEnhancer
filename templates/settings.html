@@ -64,7 +64,7 @@
         {% endif %}
     {% endwith %}
 
-    <form method="POST" action="{{ url_for('auth.update_settings') }}">
+    <form method="POST" action="{{ url_for('auth.user_settings') }}">
         <div class="form-group">
             <label for="username">Username:</label>
             <input type="text" id="username" name="username" value="{{ user.username }}" required>
