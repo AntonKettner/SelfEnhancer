@@ -6,14 +6,24 @@ from werkzeug.security import generate_password_hash
 # Gunicorn config
 bind = "0.0.0.0:8000"
 workers = multiprocessing.cpu_count() * 2 + 1
-worker_class = "sync"  # Sync workers handle long-running processes better for our case
-threads = 4  # Number of threads per worker
+worker_class = "gevent"  # Use gevent for better async support
+worker_connections = 1000
 timeout = 600
 keepalive = 65
+graceful_timeout = 120
+max_requests = 1000
+max_requests_jitter = 50
 accesslog = "-"
 errorlog = "-"
+loglevel = "info"
 capture_output = True
 enable_stdio_inheritance = True  # Ensures proper stdout/stderr handling
+forwarded_allow_ips = "*"  # Allow forwarded requests
+proxy_protocol = True  # Support proxy protocol
+proxy_allow_ips = "*"  # Allow proxy from any IP
+
+# Gevent specific settings
+worker_connections = 1000
 
 
 def on_starting(server):

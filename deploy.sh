@@ -10,7 +10,18 @@ echo "Creating data directories..."
 mkdir -p /home/site/wwwroot/data/sqlite
 mkdir -p /home/site/wwwroot/data/chroma
 mkdir -p /home/site/wwwroot/data/uploads
+mkdir -p /home/site/wwwroot/data/temp
 chmod -R 755 /home/site/wwwroot/data
+
+# Clean up any old temporary files
+echo "Cleaning up old temporary files..."
+find /home/site/wwwroot/data/temp -type f -mtime +1 -delete 2>/dev/null || true
+find /home/site/wwwroot/data/uploads -type f -mtime +1 -delete 2>/dev/null || true
+
+# Ensure proper permissions for streaming
+echo "Setting up streaming permissions..."
+chmod 1777 /home/site/wwwroot/data/temp
+chmod 1777 /home/site/wwwroot/data/uploads
 
 echo "Directory structure:"
 ls -R /home/site/wwwroot/data/

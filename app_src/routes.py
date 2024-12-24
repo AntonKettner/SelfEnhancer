@@ -13,8 +13,9 @@ import os
 import tempfile
 from werkzeug.utils import secure_filename
 import zipfile
-from threading import Thread
+from threading import Thread, Event
 import queue
+import time
 from .auth import get_api_key
 from .utils import capture_output, allowed_file
 from config.settings import UPLOADS_PATH
@@ -78,26 +79,76 @@ def upload_codebase():
 @main_bp.route("/run-enhancement")
 @login_required
 def run_enhancement():
-    def generate():
-        output_queue = queue.Queue()
-        app = current_app._get_current_object()
+    output_queue = queue.Queue()
+    app = current_app._get_current_object()
+    done_event = Event()
+    start_time = time.time()
+    error_occurred = False
 
-        def run_with_context():
-            with app.app_context():
+    # Get metrics from app context
+    metrics = app.extensions["prometheus_metrics"]
+    enhancement_total = metrics.counter("enhancement_total")
+    enhancement_errors = metrics.counter("enhancement_errors")
+    enhancement_duration = metrics.histogram("enhancement_duration_seconds")
+
+    # Increment total enhancements counter
+    enhancement_total.inc()
+
+    def process_enhancement():
+        with app.app_context():
+            try:
                 capture_output(output_queue, app)
+            except Exception as e:
+                nonlocal error_occurred
+                error_occurred = True
+                enhancement_errors.inc()
+                raise
+            finally:
+                done_event.set()
+                # Record duration
+                duration = time.time() - start_time
+                enhancement_duration.observe(duration)
 
-        thread = Thread(target=run_with_context)
+    def generate():
+        thread = Thread(target=process_enhancement)
+        thread.daemon = True
         thread.start()
 
-        while True:
+        while not done_event.is_set() or not output_queue.empty():
             try:
-                output = output_queue.get(timeout=1)
-                if not output.endswith("\n"):
-                    output += "\n"
-                yield f"data: {output}\n\n"
+                output = output_queue.get(timeout=0.1)
+                if output:
+                    if not output.endswith("\n"):
+                        output += "\n"
+                    yield f"data: {output}\n\n"
             except queue.Empty:
-                if not thread.is_alive():
-                    break
+                # Send a keep-alive message every second
                 yield "data: Processing...\n\n"
+                time.sleep(0.1)
+            except Exception as e:
+                enhancement_errors.inc()
+                yield f"data: Error: {str(e)}\n\n"
+                break
 
-    return Response(generate(), mimetype="text/event-stream")
+        # Final check for any remaining messages
+        while not output_queue.empty():
+            try:
+                output = output_queue.get_nowait()
+                if output:
+                    if not output.endswith("\n"):
+                        output += "\n"
+                    yield f"data: {output}\n\n"
+            except queue.Empty:
+                break
+
+    from flask import stream_with_context
+
+    return Response(
+        stream_with_context(generate()),
+        mimetype="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        },
+    )

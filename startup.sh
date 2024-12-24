@@ -29,7 +29,8 @@ chmod +x deploy.sh
 echo "Running deployment script..."
 ./deploy.sh
 
-# Start gunicorn with the port from Azure's environment variable
+# Start gunicorn with configuration file
 echo "Starting gunicorn..."
 PORT="${WEBSITES_PORT:-8000}"
-exec gunicorn --bind=0.0.0.0:${PORT} --timeout 600 --access-logfile '-' --error-logfile '-' wsgi:app
+export GUNICORN_CMD_ARGS="--bind=0.0.0.0:${PORT} --config=gunicorn.conf.py --preload --max-requests 1000 --max-requests-jitter 50"
+exec gunicorn wsgi:application
