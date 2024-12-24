@@ -81,7 +81,12 @@ def run_enhancement():
     def generate():
         output_queue = queue.Queue()
         app = current_app._get_current_object()
-        thread = Thread(target=capture_output, args=(output_queue, app))
+
+        def run_with_context():
+            with app.app_context():
+                capture_output(output_queue, app)
+
+        thread = Thread(target=run_with_context)
         thread.start()
 
         while True:
