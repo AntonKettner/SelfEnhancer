@@ -3,8 +3,9 @@ from flask_sqlalchemy import SQLAlchemy
 
 db = SQLAlchemy()
 
+
 class User(UserMixin, db.Model):
-    __tablename__ = 'users'
+    __tablename__ = "users"
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(120), nullable=False)
@@ -12,13 +13,18 @@ class User(UserMixin, db.Model):
 
     def set_password(self, password):
         from werkzeug.security import generate_password_hash
+
         self.password_hash = generate_password_hash(password)
 
     def check_password(self, password):
         from werkzeug.security import check_password_hash
+
         return check_password_hash(self.password_hash, password)
 
+
 class APIKey(db.Model):
-    __tablename__ = 'api_keys'
+    __tablename__ = "api_keys"
     id = db.Column(db.Integer, primary_key=True)
     openai_key = db.Column(db.String(100), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    user = db.relationship("User", backref=db.backref("api_key", uselist=False))

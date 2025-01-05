@@ -12,7 +12,9 @@ def load_user(user_id):
 
 
 def get_api_key():
-    api_key = APIKey.query.first()
+    if not current_user.is_authenticated:
+        return None
+    api_key = APIKey.query.filter_by(user_id=current_user.id).first()
     return api_key.openai_key if api_key else None
 
 
@@ -42,17 +44,14 @@ def logout():
 @auth_bp.route("/api-key", methods=["GET", "POST"])
 @login_required
 def manage_api_key():
-    if not current_user.is_admin:
-        return redirect(url_for("main.dashboard"))
-
     if request.method == "POST":
         new_key = request.form.get("api_key")
         if new_key:
-            api_key = APIKey.query.first()
+            api_key = APIKey.query.filter_by(user_id=current_user.id).first()
             if api_key:
                 api_key.openai_key = new_key
             else:
-                api_key = APIKey(openai_key=new_key)
+                api_key = APIKey(openai_key=new_key, user_id=current_user.id)
                 db.session.add(api_key)
             db.session.commit()
             flash("API key updated successfully")

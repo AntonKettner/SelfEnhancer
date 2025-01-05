@@ -121,9 +121,7 @@
     <div class="nav-bar">
         <h1 class="nav-title">SelfEnhancer Demo - get-enhancement-ideas</h1>
         <div class="nav-buttons">
-            {% if is_admin %}
-                <a href="{{ url_for('auth.manage_api_key') }}" class="button">Manage API Key</a>
-            {% endif %}
+            <a href="{{ url_for('auth.manage_api_key') }}" class="button">Manage API Key</a>
             <a href="{{ url_for('auth.user_settings') }}" class="button settings">User Settings</a>
             <a href="{{ url_for('auth.logout') }}" class="button logout">Logout</a>
         </div>
