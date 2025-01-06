@@ -1,6 +1,7 @@
-__import__('pysqlite3')
+__import__("pysqlite3")
 import sys
-sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+
+sys.modules["sqlite3"] = sys.modules.pop("pysqlite3")
 
 import os
 import glob
@@ -16,12 +17,18 @@ from src.query_data import query_RAG_DB
 from config.settings import *
 from data.prompts import *
 
+
 class Enhancement:
-    def __init__(self):
-        self.data_path = os.environ.get('DATA_PATH')
+    def __init__(self, user_id=None):
+        self.data_path = os.environ.get("DATA_PATH")
         if not self.data_path:
             raise ValueError("DATA_PATH environment variable not set")
-            
+
+        # Set user-specific RAG path
+        if user_id is not None:
+            os.environ["RAG_DB_PATH"] = get_user_rag_path(user_id)
+            print(colored(f"Using user-specific RAG path: {os.environ['RAG_DB_PATH']}", "green"))
+
         print(colored(f"Initializing Enhancement with DATA_PATH: {self.data_path}", "green"))
         try:
             self.codebase = self.get_codebase(self.data_path)
@@ -107,12 +114,12 @@ class Enhancement:
         print(colored("Generating improvement ideas...", "green"))
         try:
             # Verify OpenAI API key
-            if not os.environ.get('OPENAI_API_KEY'):
+            if not os.environ.get("OPENAI_API_KEY"):
                 raise ValueError("OpenAI API key not found in environment variables")
-                
+
             print(colored(f"Initializing ChatOpenAI with model: {LLM_MODEL}", "green"))
             llm = ChatOpenAI(model=LLM_MODEL)
-            
+
             # Format the prompt with the project structure
             print(colored("Processing Codebase...", "green"))
             processed_codebase = self.process_codebase(self.codebase)
@@ -121,12 +128,17 @@ class Enhancement:
             # Count the tokens in the prompt
             print(colored("Counting Tokens for full prompt...", "green"))
             prompt_tokens = self.count_tokens(prompt_full_codebase)
-            
+
             # run the model either with context or in RAG mode
             with get_openai_callback() as cb:
                 if prompt_tokens < MAX_CONTEXT:
                     # Get response from LLM with codebase as context
-                    print(colored(f"Using LLM-Context Window (tokens: {prompt_tokens}/{MAX_CONTEXT})", "green"))
+                    print(
+                        colored(
+                            f"Using LLM-Context Window (tokens: {prompt_tokens}/{MAX_CONTEXT})",
+                            "green",
+                        )
+                    )
                     response = llm.invoke(prompt_full_codebase)
                 else:
                     # Use RAG with structure tree
@@ -134,7 +146,9 @@ class Enhancement:
                     RAG_question = GET_RAG_IMPROVEMENT.format(structure=self.structure)
                     print(colored("Querying RAG DB...", "green"))
                     rag_context = query_RAG_DB(RAG_question)
-                    rag_codebase = RAG_CODEBASE.format(rag_context=rag_context, structure=self.structure)
+                    rag_codebase = RAG_CODEBASE.format(
+                        rag_context=rag_context, structure=self.structure
+                    )
                     prompt_with_rag = IMPROVEMENT_IDEAS.format(codebase=rag_codebase)
                     print(colored("Getting response from LLM...", "green"))
                     response = llm.invoke(prompt_with_rag)
@@ -145,35 +159,35 @@ class Enhancement:
             print(colored("Parsing response...", "green"))
             ideas_text = response.content
             print(colored(f"Raw response content:\n{ideas_text}", "blue"))
-            
+
             if not ideas_text:
                 print(colored("Warning: Empty response from LLM", "yellow"))
                 return [], current_usage
-                
+
             # Split response into lines and look for [IDEA] tags
-            ideas_lines = [line for line in ideas_text.split('\n') if '[IDEA]' in line]
+            ideas_lines = [line for line in ideas_text.split("\n") if "[IDEA]" in line]
             print(colored(f"Found {len(ideas_lines)} lines containing [IDEA] tags", "green"))
-            
+
             if not ideas_lines:
                 print(colored("Warning: No [IDEA] tags found in response", "yellow"))
                 # Return the full response as a single idea if no tags found
                 return [ideas_text.strip()], current_usage
-            
+
             # Extract ideas from lines containing [IDEA] tags
             ideas_list = []
             for line in ideas_lines:
                 try:
-                    idea = line.split('[IDEA]')[1].strip()
+                    idea = line.split("[IDEA]")[1].strip()
                     ideas_list.append(idea)
                     print(colored(f"Extracted idea: {idea}", "green"))
                 except IndexError as e:
                     print(colored(f"Error extracting idea from line: {line}", "yellow"))
                     continue
-            
+
             if not ideas_list:
                 print(colored("Warning: Failed to extract any ideas from response", "yellow"))
                 return [ideas_text.strip()], current_usage
-            
+
             return ideas_list, current_usage
         except Exception as e:
             print(colored(f"Error generating improvement ideas: {str(e)}", "red"))
@@ -184,18 +198,18 @@ class Enhancement:
         print(colored(f"Generating structure tree for path: {path}", "green"))
         try:
             structure = []
-            
+
             for root, dirs, files in os.walk(path):
                 # Modify `dirs` in-place to exclude directories that start with `.`
-                dirs[:] = [d for d in dirs if not d.startswith('.')]
-                level = root.replace(path, '').count(os.sep)
-                indent = '  ' * level
-                structure.append(f'{indent}{os.path.basename(root)}/')
+                dirs[:] = [d for d in dirs if not d.startswith(".")]
+                level = root.replace(path, "").count(os.sep)
+                indent = "  " * level
+                structure.append(f"{indent}{os.path.basename(root)}/")
                 for file in files:
-                    if not file.startswith('.') and not file.endswith('.pyc'):
-                        structure.append(f'{indent}  {file}')
+                    if not file.startswith(".") and not file.endswith(".pyc"):
+                        structure.append(f"{indent}  {file}")
 
-            structure_tree = '\n'.join(structure)
+            structure_tree = "\n".join(structure)
             return structure_tree
         except Exception as e:
             print(colored(f"Error generating structure tree: {str(e)}", "red"))
@@ -206,7 +220,7 @@ def main():
     try:
         print(colored("Starting enhancement process...", "green"))
         enhancement = Enhancement()
-        
+
         if IDEA_GENERATION:
             print(colored("Generating improvement ideas...", "green"))
             enhancement.ideas, enhancement.usage = enhancement.generate_improvement_ideas()
@@ -219,7 +233,7 @@ def main():
         for index, idea in enumerate(enhancement.ideas):
             print(colored(f"{index+1}: {idea}\n", "green"))
         print(enhancement.usage)
-        
+
     except Exception as e:
         print(colored(f"Error in main: {str(e)}", "red"))
         print(colored(f"Traceback: {traceback.format_exc()}", "red"))

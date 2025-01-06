@@ -72,7 +72,9 @@ def capture_output(queue, app):
         queue.put("Initializing Enhancement process...\n")
 
         try:
-            enhancement = Enhancement()
+            from flask_login import current_user
+
+            enhancement = Enhancement(user_id=current_user.id)
             queue.put("Generating improvement ideas...\n")
 
             # Measure API latency if metrics are available

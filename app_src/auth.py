@@ -52,16 +52,26 @@ def manage_api_key():
         new_key = request.form.get("api_key")
         if new_key:
             try:
+                # Start a transaction
+                db.session.begin_nested()
+
+                # Try to get existing API key for the user
                 api_key = APIKey.query.filter_by(user_id=current_user.id).first()
+
                 if api_key:
+                    # Update existing key
                     api_key.openai_key = new_key
                 else:
+                    # Create new API key entry
                     api_key = APIKey(openai_key=new_key, user_id=current_user.id)
                     db.session.add(api_key)
+
+                # Commit the transaction
                 db.session.commit()
                 flash("API key updated successfully")
                 return redirect(url_for("main.dashboard"))
             except Exception as e:
+                # Roll back the transaction on error
                 db.session.rollback()
                 print(f"Error updating API key: {e}")
                 flash("Error updating API key. Please try again.")
