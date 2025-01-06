@@ -1,21 +1,21 @@
 from app_src.models import db, APIKey, User
-from app import app
+from flask import current_app
 
 
 def migrate_api_keys():
-    with app.app_context():
-        # First add the column if it doesn't exist
-        with db.engine.connect() as conn:
-            try:
-                # Add user_id column if it doesn't exist
-                conn.execute(
-                    "ALTER TABLE api_keys ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id)"
-                )
-                print("Added user_id column to api_keys table")
-            except Exception as e:
-                print(f"Note: Column may already exist: {e}")
-
+    """Migrate API keys to include user_id column and associate with admin user."""
+    with current_app.app_context():
         try:
+            # First add the column if it doesn't exist
+            with db.engine.connect() as conn:
+                try:
+                    conn.execute(
+                        "ALTER TABLE api_keys ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id)"
+                    )
+                    print("Added user_id column to api_keys table")
+                except Exception as e:
+                    print(f"Note: Column may already exist: {e}")
+
             # Get all existing API keys that don't have a user_id
             existing_keys = APIKey.query.filter(APIKey.user_id.is_(None)).all()
 
@@ -41,6 +41,7 @@ def migrate_api_keys():
         except Exception as e:
             print(f"Error during migration: {e}")
             db.session.rollback()
+            raise  # Re-raise the exception to be caught by the app's error handler
 
 
 if __name__ == "__main__":

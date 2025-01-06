@@ -85,10 +85,14 @@ def create_app():
     init_db(app)
 
     # Run API key migration if needed
-    with app.app_context():
+    try:
         from src.migrate_api_keys import migrate_api_keys
 
         migrate_api_keys()
+        print("API key migration completed successfully")
+    except Exception as e:
+        print(f"Warning: API key migration error (this may be normal on first run): {e}")
+        # Continue app startup even if migration fails
 
     @app.after_request
     def after_request(response):
