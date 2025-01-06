@@ -41,21 +41,22 @@ find /home/site/wwwroot/data/metrics -type f -mtime +7 -delete 2>/dev/null || tr
 echo "Directory structure:"
 ls -R /home/site/wwwroot/data/
 
-# Initialize the SQLite database
-echo "Initializing database..."
+# Check database and run migrations if needed
+echo "Checking database and running migrations..."
 python3 << END
 import os
 import sys
+import sqlite3
 from app import create_app
 from app_src.models import db
 from app_src.auth import init_db
+from src.migrate_api_keys import migrate_api_keys
 
 print("Python initialization starting...")
 print(f"Current working directory: {os.getcwd()}")
 
 app = create_app()
 print(f"Database URL: {app.config['SQLALCHEMY_DATABASE_URI']}")
-print(f"ChromaDB Path: {os.environ.get('RAG_DB_PATH')}")
 
 # Ensure database directory exists and has correct permissions
 db_path = app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', '')
@@ -68,11 +69,33 @@ if not os.path.exists(db_dir):
     os.chmod(db_dir, 0o755)
 
 try:
-    print("Initializing database...")
-    init_db(app)
-    print("Database initialization completed successfully")
+    # Check if database needs migration
+    print("Checking if migration is needed...")
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
+    # Check if user_id column exists in api_keys table
+    cursor.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='api_keys'")
+    table_schema = cursor.fetchone()
+    
+    needs_migration = False
+    if table_schema:
+        table_sql = table_schema[0]
+        if 'user_id' not in table_sql.lower():
+            print("user_id column not found in api_keys table, migration needed")
+            needs_migration = True
+    cursor.close()
+    conn.close()
+    
+    if needs_migration:
+        print("Running API key migration...")
+        with app.app_context():
+            migrate_api_keys()
+            print("API key migration completed successfully")
+    else:
+        print("No migration needed, api_keys table already has user_id column")
 except Exception as e:
-    print(f"Error during database initialization: {str(e)}", file=sys.stderr)
+    print(f"Error during database check/migration: {str(e)}", file=sys.stderr)
     raise
 
 print("Checking database file permissions:")
