@@ -14,8 +14,12 @@ def load_user(user_id):
 def get_api_key():
     if not current_user.is_authenticated:
         return None
-    api_key = APIKey.query.filter_by(user_id=current_user.id).first()
-    return api_key.openai_key if api_key else None
+    try:
+        api_key = APIKey.query.filter_by(user_id=current_user.id).first()
+        return api_key.openai_key if api_key else None
+    except Exception as e:
+        print(f"Error getting API key: {e}")
+        return None
 
 
 @auth_bp.route("/login", methods=["GET", "POST"])
@@ -47,19 +51,30 @@ def manage_api_key():
     if request.method == "POST":
         new_key = request.form.get("api_key")
         if new_key:
-            api_key = APIKey.query.filter_by(user_id=current_user.id).first()
-            if api_key:
-                api_key.openai_key = new_key
-            else:
-                api_key = APIKey(openai_key=new_key, user_id=current_user.id)
-                db.session.add(api_key)
-            db.session.commit()
-            flash("API key updated successfully")
-            return redirect(url_for("main.dashboard"))
+            try:
+                api_key = APIKey.query.filter_by(user_id=current_user.id).first()
+                if api_key:
+                    api_key.openai_key = new_key
+                else:
+                    api_key = APIKey(openai_key=new_key, user_id=current_user.id)
+                    db.session.add(api_key)
+                db.session.commit()
+                flash("API key updated successfully")
+                return redirect(url_for("main.dashboard"))
+            except Exception as e:
+                db.session.rollback()
+                print(f"Error updating API key: {e}")
+                flash("Error updating API key. Please try again.")
+                return redirect(url_for("auth.manage_api_key"))
 
-    api_key = get_api_key()
-    masked_key = f"{api_key[:10]}..." if api_key else None
-    return render_template("api_key.html", api_key=masked_key)
+    try:
+        api_key = get_api_key()
+        masked_key = f"{api_key[:10]}..." if api_key else None
+        return render_template("api_key.html", api_key=masked_key)
+    except Exception as e:
+        print(f"Error loading API key page: {e}")
+        flash("Error loading API key information")
+        return redirect(url_for("main.dashboard"))
 
 
 @auth_bp.route("/add-user", methods=["POST"])

@@ -6,42 +6,43 @@ def migrate_api_keys():
     """Migrate API keys to include user_id column and associate with admin user."""
     with current_app.app_context():
         try:
-            # First add the column if it doesn't exist
-            with db.engine.connect() as conn:
-                try:
-                    conn.execute(
-                        "ALTER TABLE api_keys ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id)"
-                    )
-                    print("Added user_id column to api_keys table")
-                except Exception as e:
-                    print(f"Note: Column may already exist: {e}")
+            # Drop and recreate the api_keys table with the new schema
+            print("Backing up existing API keys...")
+            existing_keys = []
+            try:
+                # Try to get existing keys if table exists
+                existing_keys = [(key.id, key.openai_key) for key in APIKey.query.all()]
+            except Exception as e:
+                print(f"Note: Could not fetch existing keys (this is normal for first run): {e}")
 
-            # Get all existing API keys that don't have a user_id
-            existing_keys = APIKey.query.filter(APIKey.user_id.is_(None)).all()
+            print("Recreating api_keys table with new schema...")
+            # Drop the table if it exists
+            db.session.execute("DROP TABLE IF EXISTS api_keys")
+            db.session.commit()
 
+            # Create the table with the new schema
+            db.create_all()
+            db.session.commit()
+
+            # Restore existing keys and associate with admin
             if existing_keys:
-                # Get or create admin user
+                print("Restoring existing API keys...")
                 admin = User.query.filter_by(username="admin").first()
                 if admin:
-                    # Associate keys with admin user
-                    for key in existing_keys:
-                        key.user_id = admin.id
+                    for key_id, openai_key in existing_keys:
+                        new_key = APIKey(id=key_id, openai_key=openai_key, user_id=admin.id)
+                        db.session.add(new_key)
                     db.session.commit()
-                    print(f"Migrated {len(existing_keys)} API keys to admin user")
+                    print(f"Restored and migrated {len(existing_keys)} API keys to admin user")
                 else:
-                    print("No admin user found - skipping key migration")
+                    print("No admin user found - skipping key restoration")
             else:
-                print("No API keys need migration")
-
-            # Now make the column non-nullable
-            with db.engine.connect() as conn:
-                conn.execute("ALTER TABLE api_keys ALTER COLUMN user_id SET NOT NULL")
-                print("Set user_id column to NOT NULL")
+                print("No existing API keys to restore")
 
         except Exception as e:
             print(f"Error during migration: {e}")
             db.session.rollback()
-            raise  # Re-raise the exception to be caught by the app's error handler
+            raise
 
 
 if __name__ == "__main__":
