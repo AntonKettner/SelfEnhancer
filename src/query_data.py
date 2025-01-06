@@ -27,7 +27,13 @@ def format_results(results):
     return formatted_results
 
 
-def query_RAG_DB(query_text, db_path=RAG_DB_PATH):
+def query_RAG_DB(query_text, user_id=None, db_path=None):
+    # Get user-specific RAG path if user_id is provided
+    if user_id is not None:
+        db_path = get_user_rag_path(user_id)
+    elif db_path is None:
+        db_path = RAG_DB_PATH
+
     print(f"Querying RAG DB at path: {db_path}")
 
     try:

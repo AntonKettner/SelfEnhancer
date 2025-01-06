@@ -24,17 +24,14 @@ class Enhancement:
         if not self.data_path:
             raise ValueError("DATA_PATH environment variable not set")
 
-        # Set user-specific RAG path
-        if user_id is not None:
-            os.environ["RAG_DB_PATH"] = get_user_rag_path(user_id)
-            print(colored(f"Using user-specific RAG path: {os.environ['RAG_DB_PATH']}", "green"))
-
+        # Store user_id for database operations
+        self.user_id = user_id
         print(colored(f"Initializing Enhancement with DATA_PATH: {self.data_path}", "green"))
         try:
             self.codebase = self.get_codebase(self.data_path)
             self.structure = self.generate_structure_tree(self.data_path)
             print(colored("Generating RAG DB...", "green"))
-            self.db = generate_RAG_DB(self.data_path)
+            self.db = generate_RAG_DB(self.data_path, self.user_id)
         except Exception as e:
             print(colored(f"Error during initialization: {str(e)}", "red"))
             print(colored(f"Traceback: {traceback.format_exc()}", "red"))
@@ -43,7 +40,7 @@ class Enhancement:
     def update_rag_db(self):
         print(colored(f"Creating RAG DB at path: {self.data_path}", "green"))
         try:
-            self.db = generate_RAG_DB(self.data_path)
+            self.db = generate_RAG_DB(self.data_path, self.user_id)
         except Exception as e:
             print(colored(f"Error updating RAG DB: {str(e)}", "red"))
             raise
@@ -145,7 +142,7 @@ class Enhancement:
                     print(colored(f"Using RAG (tokens: {prompt_tokens}/{MAX_CONTEXT})", "green"))
                     RAG_question = GET_RAG_IMPROVEMENT.format(structure=self.structure)
                     print(colored("Querying RAG DB...", "green"))
-                    rag_context = query_RAG_DB(RAG_question)
+                    rag_context = query_RAG_DB(RAG_question, self.user_id)
                     rag_codebase = RAG_CODEBASE.format(
                         rag_context=rag_context, structure=self.structure
                     )

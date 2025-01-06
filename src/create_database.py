@@ -22,13 +22,15 @@ load_dotenv()
 mimetypes.init()
 
 
-def generate_RAG_DB(path=UPLOADS_PATH):
+def generate_RAG_DB(path=UPLOADS_PATH, user_id=None):
+    # Get user-specific RAG path
+    rag_path = get_user_rag_path(user_id) if user_id is not None else RAG_DB_PATH
     print(f"Generating RAG DB with path: {path}")
-    print(f"RAG_DB_PATH: {RAG_DB_PATH}")
+    print(f"RAG_DB_PATH: {rag_path}")
 
     # Ensure RAG_DB_PATH directory exists with proper permissions
-    os.makedirs(RAG_DB_PATH, exist_ok=True)
-    os.chmod(RAG_DB_PATH, 0o755)
+    os.makedirs(rag_path, exist_ok=True)
+    os.chmod(rag_path, 0o755)
 
     # Ensure uploads directory exists with proper permissions
     os.makedirs(UPLOADS_PATH, exist_ok=True)
@@ -42,7 +44,7 @@ def generate_RAG_DB(path=UPLOADS_PATH):
     if not chunks:
         raise ValueError("No valid chunks generated from documents")
 
-    db = save_to_chroma(chunks)
+    db = save_to_chroma(chunks, rag_path)
     return db
 
 
@@ -162,32 +164,32 @@ def split_text(documents: list):
         return []
 
 
-def save_to_chroma(chunks: list):
-    print(f"Saving to ChromaDB at: {RAG_DB_PATH}")
+def save_to_chroma(chunks: list, rag_path: str):
+    print(f"Saving to ChromaDB at: {rag_path}")
 
     if not chunks:
         raise ValueError("Cannot save empty chunks to ChromaDB")
 
     try:
         # Clear out the database first.
-        if os.path.exists(RAG_DB_PATH):
-            print(f"Removing existing ChromaDB at: {RAG_DB_PATH}")
-            shutil.rmtree(RAG_DB_PATH)
+        if os.path.exists(rag_path):
+            print(f"Removing existing ChromaDB at: {rag_path}")
+            shutil.rmtree(rag_path)
 
         # Ensure all parent directories exist with proper permissions
-        parent_dir = os.path.dirname(RAG_DB_PATH)
+        parent_dir = os.path.dirname(rag_path)
         print(f"Ensuring parent directory exists: {parent_dir}")
         os.makedirs(parent_dir, exist_ok=True)
         os.chmod(parent_dir, 0o777)
 
         # Recreate the ChromaDB directory with proper permissions
-        print(f"Creating ChromaDB directory at: {RAG_DB_PATH}")
-        os.makedirs(RAG_DB_PATH, exist_ok=True)
-        os.chmod(RAG_DB_PATH, 0o777)  # Full permissions to handle Azure App Service restrictions
+        print(f"Creating ChromaDB directory at: {rag_path}")
+        os.makedirs(rag_path, exist_ok=True)
+        os.chmod(rag_path, 0o777)  # Full permissions to handle Azure App Service restrictions
 
         # Ensure the directory is empty
-        for item in os.listdir(RAG_DB_PATH):
-            item_path = os.path.join(RAG_DB_PATH, item)
+        for item in os.listdir(rag_path):
+            item_path = os.path.join(rag_path, item)
             if os.path.isfile(item_path):
                 os.unlink(item_path)
             elif os.path.isdir(item_path):
@@ -197,7 +199,7 @@ def save_to_chroma(chunks: list):
         print("Verifying directory permissions...")
         try:
             # Create a test file to verify write permissions
-            test_file = os.path.join(RAG_DB_PATH, "test.txt")
+            test_file = os.path.join(rag_path, "test.txt")
             with open(test_file, "w") as f:
                 f.write("test")
             os.remove(test_file)
@@ -205,7 +207,7 @@ def save_to_chroma(chunks: list):
 
             # List directory contents and permissions
             print("Directory contents and permissions:")
-            os.system(f"ls -la {RAG_DB_PATH}")
+            os.system(f"ls -la {rag_path}")
         except Exception as e:
             print(f"Permission verification failed: {e}")
             raise
@@ -226,7 +228,7 @@ def save_to_chroma(chunks: list):
         db = Chroma.from_documents(
             documents=chunks,
             embedding=embeddings,
-            persist_directory=RAG_DB_PATH,
+            persist_directory=rag_path,
             collection_name="code_chunks",
         )
 
@@ -236,7 +238,7 @@ def save_to_chroma(chunks: list):
         print(f"Successfully saved {len(chunks)} chunks to {RAG_DB_PATH}.")
 
         # Verify database files exist
-        if not os.path.exists(os.path.join(RAG_DB_PATH, "chroma.sqlite3")):
+        if not os.path.exists(os.path.join(rag_path, "chroma.sqlite3")):
             raise ValueError("Database files not created properly")
 
         return db
