@@ -1,6 +1,5 @@
 from app import create_app
 from werkzeug.middleware.proxy_fix import ProxyFix
-from flask import request
 
 app = create_app()
 

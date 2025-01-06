@@ -46,24 +46,11 @@ def on_starting(server):
         os.makedirs(data_dir)
         print(f"Created directory: {data_dir}")
 
-    # Initialize database
-    with app.app_context():
-        try:
-            print("Creating database tables...")
-            db.create_all()
+    # Initialize database and run migrations
+    from app_src.auth import init_db
 
-            # Create admin user if it doesn't exist
-            if not User.query.filter_by(username="admin").first():
-                print("Creating admin user...")
-                admin = User(
-                    username="admin", password_hash=generate_password_hash("admin"), is_admin=True
-                )
-                db.session.add(admin)
-                db.session.commit()
-                print("Admin user created successfully")
-            else:
-                print("Admin user already exists")
-
-        except Exception as e:
-            print(f"Error during initialization: {str(e)}")
-            raise
+    try:
+        init_db(app)
+    except Exception as e:
+        print(f"Error during initialization: {str(e)}")
+        raise

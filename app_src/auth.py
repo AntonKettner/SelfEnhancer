@@ -132,3 +132,13 @@ def init_db(app):
             db.session.add(admin)
             db.session.commit()
             print("Admin user created successfully")
+
+        # Run API key migration
+        try:
+            from src.migrate_api_keys import migrate_api_keys
+
+            migrate_api_keys()
+            print("API key migration completed successfully")
+        except Exception as e:
+            print(f"Warning: API key migration error: {e}")
+            db.session.rollback()

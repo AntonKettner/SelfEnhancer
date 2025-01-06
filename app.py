@@ -81,18 +81,8 @@ def create_app():
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
 
-    # Initialize database and run migrations if needed
+    # Initialize database and run migrations
     init_db(app)
-
-    # Run API key migration if needed
-    try:
-        from src.migrate_api_keys import migrate_api_keys
-
-        migrate_api_keys()
-        print("API key migration completed successfully")
-    except Exception as e:
-        print(f"Warning: API key migration error (this may be normal on first run): {e}")
-        # Continue app startup even if migration fails
 
     @app.after_request
     def after_request(response):
