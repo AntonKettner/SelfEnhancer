@@ -221,13 +221,13 @@ def save_to_chroma(chunks: list):
             print(f"Error testing embeddings: {str(e)}")
             raise
 
-        # Create a new DB from the documents with explicit client settings
+        # Create ChromaDB instance
         print("Creating new ChromaDB instance...")
         db = Chroma.from_documents(
-            chunks,
-            embeddings,
+            documents=chunks,
+            embedding=embeddings,
             persist_directory=RAG_DB_PATH,
-            client_settings={"anonymized_telemetry": False, "allow_reset": True},
+            collection_name="code_chunks",
         )
 
         # Force persist to ensure all files are written
