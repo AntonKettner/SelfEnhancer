@@ -84,15 +84,11 @@ def create_app():
     # Initialize database and run migrations if needed
     init_db(app)
 
-    # Check and migrate API keys if needed
+    # Run API key migration if needed
     with app.app_context():
-        from app_src.models import APIKey
+        from src.migrate_api_keys import migrate_api_keys
 
-        unmigrated_keys = APIKey.query.filter_by(user_id=None).all()
-        if unmigrated_keys:
-            from src.migrate_api_keys import migrate_api_keys
-
-            migrate_api_keys()
+        migrate_api_keys()
 
     @app.after_request
     def after_request(response):
