@@ -18,7 +18,19 @@ login_manager = LoginManager()
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    from flask import session
+
+    # Handle test user
+    if session.get("is_test_user") and user_id == "test_user":
+        test_user = User(username="test_user", is_admin=False)
+        test_user.id = -1  # Use a special ID for test users
+        return test_user
+
+    # Handle regular users
+    try:
+        return User.query.get(int(user_id))
+    except (ValueError, TypeError):
+        return None
 
 
 def get_api_key():
@@ -55,7 +67,9 @@ def test_login():
     session["test_session_id"] = str(uuid4())
     # Create a temporary user object without saving to database
     test_user = User(username="test_user", is_admin=False)
-    login_user(test_user)
+    test_user.id = -1  # Use a special ID for test users
+    login_user(test_user, force=True)
+    session["_user_id"] = "test_user"  # Set the user ID in session explicitly
     return redirect(url_for("main.dashboard"))
 
 
