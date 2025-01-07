@@ -171,10 +171,37 @@ def save_to_chroma(chunks: list, rag_path: str):
         raise ValueError("Cannot save empty chunks to ChromaDB")
 
     try:
-        # Clear out the database first.
+        # Clear out the database first
         if os.path.exists(rag_path):
             print(f"Removing existing ChromaDB at: {rag_path}")
-            shutil.rmtree(rag_path)
+            try:
+                # Try to properly close any existing ChromaDB instance
+                print("Attempting to close existing ChromaDB instance...")
+                existing_db = Chroma(
+                    persist_directory=rag_path,
+                    embedding_function=OpenAIEmbeddings(),
+                    collection_name="code_chunks",
+                )
+                # Delete the collection and close the client
+                existing_db.delete_collection()
+                if hasattr(existing_db, "_client"):
+                    existing_db._client.close()
+            except Exception as e:
+                print(f"Warning: Error closing existing ChromaDB: {e}")
+
+            # Force removal with maximum permissions
+            print("Forcing directory removal...")
+            for root, dirs, files in os.walk(rag_path, topdown=False):
+                for name in files:
+                    file_path = os.path.join(root, name)
+                    os.chmod(file_path, 0o777)
+                    os.remove(file_path)
+                for name in dirs:
+                    dir_path = os.path.join(root, name)
+                    os.chmod(dir_path, 0o777)
+                    os.rmdir(dir_path)
+            os.chmod(rag_path, 0o777)
+            os.rmdir(rag_path)
 
         # Ensure all parent directories exist with proper permissions
         parent_dir = os.path.dirname(rag_path)
