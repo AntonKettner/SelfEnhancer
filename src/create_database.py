@@ -7,7 +7,8 @@ from langchain_community.document_loaders import DirectoryLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.schema import Document
 from langchain_openai import OpenAIEmbeddings
-from langchain_community.vectorstores import Chroma
+from langchain_chroma import Chroma
+import chromadb
 import openai
 from dotenv import load_dotenv
 import os
@@ -175,33 +176,19 @@ def save_to_chroma(chunks: list, rag_path: str):
         if os.path.exists(rag_path):
             print(f"Removing existing ChromaDB at: {rag_path}")
             try:
-                # Try to properly close any existing ChromaDB instance
-                print("Attempting to close existing ChromaDB instance...")
-                existing_db = Chroma(
-                    persist_directory=rag_path,
-                    embedding_function=OpenAIEmbeddings(),
-                    collection_name="code_chunks",
-                )
-                # Delete the collection and close the client
-                existing_db.delete_collection()
-                if hasattr(existing_db, "_client"):
-                    existing_db._client.close()
+                # Use chromadb directly for cleanup
+                print("Attempting to reset ChromaDB...")
+                client = chromadb.PersistentClient(path=rag_path)
+                client.reset()
+                del client
             except Exception as e:
-                print(f"Warning: Error closing existing ChromaDB: {e}")
-
-            # Force removal with maximum permissions
-            print("Forcing directory removal...")
-            for root, dirs, files in os.walk(rag_path, topdown=False):
-                for name in files:
-                    file_path = os.path.join(root, name)
-                    os.chmod(file_path, 0o777)
-                    os.remove(file_path)
-                for name in dirs:
-                    dir_path = os.path.join(root, name)
-                    os.chmod(dir_path, 0o777)
-                    os.rmdir(dir_path)
-            os.chmod(rag_path, 0o777)
-            os.rmdir(rag_path)
+                print(f"Warning: Error resetting ChromaDB: {e}")
+                # If reset fails, try manual cleanup
+                try:
+                    print("Attempting manual cleanup...")
+                    shutil.rmtree(rag_path, ignore_errors=True)
+                except Exception as e:
+                    print(f"Warning: Manual cleanup failed: {e}")
 
         # Ensure all parent directories exist with proper permissions
         parent_dir = os.path.dirname(rag_path)
@@ -252,12 +239,16 @@ def save_to_chroma(chunks: list, rag_path: str):
 
         # Create ChromaDB instance
         print("Creating new ChromaDB instance...")
-        db = Chroma.from_documents(
-            documents=chunks,
-            embedding=embeddings,
-            persist_directory=rag_path,
+        client = chromadb.PersistentClient(path=rag_path)
+        db = Chroma(
+            client=client,
+            embedding_function=embeddings,
             collection_name="code_chunks",
         )
+
+        # Add documents to the collection
+        print("Adding documents to collection...")
+        db.add_documents(documents=chunks)
 
         # Force persist to ensure all files are written
         print("Persisting database...")

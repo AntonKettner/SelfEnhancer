@@ -7,7 +7,8 @@ import argparse
 import dotenv
 import os
 from termcolor import colored
-from langchain_community.vectorstores import Chroma
+from langchain_chroma import Chroma
+import chromadb
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
 from data.prompts import *
@@ -55,8 +56,10 @@ def query_RAG_DB(query_text, user_id=None, db_path=None):
         print("Initializing OpenAI embeddings...")
         embedding_function = OpenAIEmbeddings()
         print(f"Loading ChromaDB from: {db_path}")
+        # Initialize ChromaDB with proper settings
+        client = chromadb.PersistentClient(path=db_path)
         db = Chroma(
-            persist_directory=db_path,
+            client=client,
             embedding_function=embedding_function,
             collection_name="code_chunks",
         )
