@@ -57,11 +57,22 @@ def query_RAG_DB(query_text, user_id=None, db_path=None):
         embedding_function = OpenAIEmbeddings()
         print(f"Loading ChromaDB from: {db_path}")
         # Initialize ChromaDB with proper settings
-        client = chromadb.PersistentClient(path=db_path)
+        settings = chromadb.Settings(
+            allow_reset=True, is_persistent=True, persist_directory=db_path
+        )
+        client = chromadb.PersistentClient(settings=settings)
+
+        # Get or create collection
+        try:
+            collection = client.get_collection(name="code_chunks")
+        except ValueError:
+            collection = client.create_collection(name="code_chunks")
+
+        # Create Langchain wrapper
         db = Chroma(
             client=client,
-            embedding_function=embedding_function,
             collection_name="code_chunks",
+            embedding_function=embedding_function,
         )
 
         # Search the DB.

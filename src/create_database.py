@@ -178,7 +178,10 @@ def save_to_chroma(chunks: list, rag_path: str):
             try:
                 # Use chromadb directly for cleanup
                 print("Attempting to reset ChromaDB...")
-                client = chromadb.PersistentClient(path=rag_path)
+                settings = chromadb.Settings(
+                    allow_reset=True, is_persistent=True, persist_directory=rag_path
+                )
+                client = chromadb.PersistentClient(settings=settings)
                 client.reset()
                 del client
             except Exception as e:
@@ -239,25 +242,43 @@ def save_to_chroma(chunks: list, rag_path: str):
 
         # Create ChromaDB instance
         print("Creating new ChromaDB instance...")
-        client = chromadb.PersistentClient(path=rag_path)
+        settings = chromadb.Settings(
+            allow_reset=True, is_persistent=True, persist_directory=rag_path
+        )
+        client = chromadb.PersistentClient(settings=settings)
+
+        # Create collection
+        print("Creating ChromaDB collection...")
+        collection = client.create_collection(name="code_chunks")
+
+        # Create Langchain wrapper
         db = Chroma(
             client=client,
-            embedding_function=embeddings,
             collection_name="code_chunks",
+            embedding_function=embeddings,
         )
 
         # Add documents to the collection
         print("Adding documents to collection...")
         db.add_documents(documents=chunks)
 
-        # Force persist to ensure all files are written
+        # Force persist and wait for files
         print("Persisting database...")
         db.persist()
-        print(f"Successfully saved {len(chunks)} chunks to {RAG_DB_PATH}.")
 
-        # Verify database files exist
-        if not os.path.exists(os.path.join(rag_path, "chroma.sqlite3")):
-            raise ValueError("Database files not created properly")
+        # Give ChromaDB time to create files
+        import time
+
+        max_retries = 5
+        for i in range(max_retries):
+            if os.path.exists(os.path.join(rag_path, "chroma.sqlite3")):
+                print("Database files created successfully")
+                break
+            if i < max_retries - 1:
+                print(f"Waiting for database files (attempt {i+1}/{max_retries})...")
+                time.sleep(1)
+            else:
+                raise ValueError("Database files not created after maximum retries")
 
         return db
     except Exception as e:
