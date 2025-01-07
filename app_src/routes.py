@@ -56,7 +56,7 @@ def upload_codebase():
         api_key = request.form.get("api_key")
         if not api_key:
             return jsonify({"error": "API key is required for test users"}), 400
-        os.environ["OPENAI_API_KEY"] = api_key
+        session["test_api_key"] = api_key  # Store API key in session
 
     file = request.files["codebase"]
     if file.filename == "":
@@ -92,12 +92,18 @@ def upload_codebase():
 @main_bp.route("/run-enhancement")
 @login_required
 def run_enhancement():
-    from flask import copy_current_request_context
+    from flask import copy_current_request_context, session
 
     output_queue = queue.Queue()
     done_event = Event()
     start_time = time.time()
     error_occurred = False
+
+    # Set API key for test users
+    if session.get("is_test_user"):
+        api_key = session.get("test_api_key")
+        if api_key:
+            os.environ["OPENAI_API_KEY"] = api_key
 
     # Get app before entering the thread
     app = current_app._get_current_object()

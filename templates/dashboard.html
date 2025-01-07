@@ -177,6 +177,11 @@
                 // Add API key to form data for test users
                 const apiKeyInput = document.getElementById('api_key');
                 if (apiKeyInput) {
+                    if (!apiKeyInput.value) {
+                        output.textContent += 'Error: API key is required for test users\n';
+                        button.style.display = 'block'; // Show button again on error
+                        return;
+                    }
                     formData.append('api_key', apiKeyInput.value);
                 }
 
@@ -187,7 +192,8 @@
                 });
                 
                 if (!uploadResponse.ok) {
-                    throw new Error('Upload failed');
+                    const errorData = await uploadResponse.json();
+                    throw new Error(errorData.error || 'Upload failed');
                 }
                 
                 output.textContent += 'File uploaded successfully. Starting enhancement process...\n';
