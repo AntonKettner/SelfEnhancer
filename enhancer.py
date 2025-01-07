@@ -110,12 +110,18 @@ class Enhancement:
     def generate_improvement_ideas(self):
         print(colored("Generating improvement ideas...", "green"))
         try:
-            # Verify OpenAI API key
+            # Get API key from auth module
+            from app_src.auth import get_api_key
+
+            api_key = get_api_key()
+            # set the api key in the environment
+            os.environ["OPENAI_API_KEY"] = api_key
+
             if not os.environ.get("OPENAI_API_KEY"):
-                raise ValueError("OpenAI API key not found in environment variables")
+                raise ValueError("OpenAI API key not configured")
 
             print(colored(f"Initializing ChatOpenAI with model: {LLM_MODEL}", "green"))
-            llm = ChatOpenAI(model=LLM_MODEL)
+            llm = ChatOpenAI(model=LLM_MODEL, api_key=api_key)
 
             # Format the prompt with the project structure
             print(colored("Processing Codebase...", "green"))

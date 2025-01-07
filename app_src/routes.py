@@ -92,18 +92,12 @@ def upload_codebase():
 @main_bp.route("/run-enhancement")
 @login_required
 def run_enhancement():
-    from flask import copy_current_request_context, session
+    from flask import copy_current_request_context
 
     output_queue = queue.Queue()
     done_event = Event()
     start_time = time.time()
     error_occurred = False
-
-    # Set API key for test users
-    if session.get("is_test_user"):
-        api_key = session.get("test_api_key")
-        if api_key:
-            os.environ["OPENAI_API_KEY"] = api_key
 
     # Get app before entering the thread
     app = current_app._get_current_object()

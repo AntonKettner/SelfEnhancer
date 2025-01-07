@@ -34,6 +34,13 @@ def load_user(user_id):
 
 
 def get_api_key():
+    from flask import session
+
+    # For test users, return API key from session
+    if session.get("is_test_user"):
+        return session.get("test_api_key")
+
+    # For regular users, get API key from database
     if not current_user.is_authenticated:
         return None
     try:
