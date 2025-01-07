@@ -9,8 +9,8 @@ from dotenv import load_dotenv
 import os
 import shutil
 import mimetypes
-from config.settings import *
 import glob
+from config.settings import UPLOADS_PATH, RAG_DB_PATH, RAG_FILETYPES, get_user_rag_path
 
 __import__("pysqlite3")
 load_dotenv()
@@ -174,7 +174,7 @@ def save_to_chroma(chunks: list, rag_path: str):
             print(f"Removing existing ChromaDB at: {rag_path}")
             try:
                 print("Attempting manual cleanup...")
-                shutil.rmtree(rag_path, ignore_errors=True)
+                shutil.rmtree(rag_path)
                 print("Manual cleanup successful")
             except Exception as e:
                 print(f"Warning: Manual cleanup failed: {e}")
@@ -226,7 +226,6 @@ def save_to_chroma(chunks: list, rag_path: str):
             raise
 
         # Initialize ChromaDB with proper settings
-
         # Create embeddings instance first to validate OpenAI connection
         embeddings = OpenAIEmbeddings()
         # Test embeddings with a sample chunk
