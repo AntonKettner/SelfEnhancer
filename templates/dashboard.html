@@ -121,9 +121,13 @@
     <div class="nav-bar">
         <h1 class="nav-title">SelfEnhancer Demo - get-enhancement-ideas</h1>
         <div class="nav-buttons">
-            <a href="{{ url_for('auth.manage_api_key') }}" class="button">Manage API Key</a>
-            <a href="{{ url_for('auth.user_settings') }}" class="button settings">User Settings</a>
-            <a href="{{ url_for('auth.logout') }}" class="button logout">Logout</a>
+            {% if not session.get('is_test_user') %}
+                <a href="{{ url_for('auth.manage_api_key') }}" class="button">Manage API Key</a>
+                <a href="{{ url_for('auth.user_settings') }}" class="button settings">User Settings</a>
+                <a href="{{ url_for('auth.logout') }}" class="button logout">Logout</a>
+            {% else %}
+                <a href="{{ url_for('auth.logout') }}" class="button logout">Exit Test Mode</a>
+            {% endif %}
         </div>
     </div>
 
@@ -138,7 +142,6 @@
     <div class="main-content">
         <div class="main-section">
             <div id="enhancement-ideas"></div>
-            {% if api_key_configured %}
             <div class="upload-section">
                 <h3>Get Enhancement Ideas for Your Codebase</h3>
                 <form id="uploadForm" enctype="multipart/form-data">
@@ -146,12 +149,16 @@
                         <input type="file" id="codebase" name="codebase" accept=".zip,.py,.txt,.md" required>
                         <small>Upload a ZIP file containing your codebase or a single file (.py, .txt, .md)</small>
                     </div>
-                    <button type="submit" class="button" onclick="handleUploadAndEnhancement(event)">Get Enhancement Ideas</button>
+                    {% if session.get('is_test_user') %}
+                    <div class="form-group" style="margin: 10px 0;">
+                        <label for="api_key">OpenAI API Key</label>
+                        <input type="password" id="api_key" name="api_key" required style="width: 100%; padding: 8px; margin-top: 5px;">
+                        <small>Enter your OpenAI API key for this request</small>
+                    </div>
+                    {% endif %}
+                    <button type="submit" class="button" id="enhancementButton" onclick="handleUploadAndEnhancement(event)">Get Enhancement Ideas</button>
                 </form>
             </div>
-            {% else %}
-            <p>Please configure the API key first.</p>
-            {% endif %}
         </div>
         <div class="log-section" id="output"></div>
     </div>
@@ -160,11 +167,19 @@
         async function handleUploadAndEnhancement(event) {
             event.preventDefault();
             const output = document.getElementById('output');
+            const button = document.getElementById('enhancementButton');
+            button.style.display = 'none'; // Hide the button after click
             const formData = new FormData(document.getElementById('uploadForm'));
             
             output.textContent = 'Uploading file...\n';
             
             try {
+                // Add API key to form data for test users
+                const apiKeyInput = document.getElementById('api_key');
+                if (apiKeyInput) {
+                    formData.append('api_key', apiKeyInput.value);
+                }
+
                 // First upload the file
                 const uploadResponse = await fetch('/upload-codebase', {
                     method: 'POST',

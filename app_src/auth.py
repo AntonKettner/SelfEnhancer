@@ -1,6 +1,16 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
+from flask import (
+    Blueprint,
+    render_template,
+    request,
+    redirect,
+    url_for,
+    flash,
+    current_app,
+    session,
+)
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from .models import User, APIKey, db
+from uuid import uuid4
 
 auth_bp = Blueprint("auth", __name__)
 login_manager = LoginManager()
@@ -38,9 +48,22 @@ def login():
     return render_template("login.html")
 
 
+@auth_bp.route("/test-login", methods=["POST"])
+def test_login():
+    # Create a temporary test user session
+    session["is_test_user"] = True
+    session["test_session_id"] = str(uuid4())
+    # Create a temporary user object without saving to database
+    test_user = User(username="test_user", is_admin=False)
+    login_user(test_user)
+    return redirect(url_for("main.dashboard"))
+
+
 @auth_bp.route("/logout")
 @login_required
 def logout():
+    if session.get("is_test_user"):
+        session.clear()
     logout_user()
     return redirect(url_for("auth.login"))
 

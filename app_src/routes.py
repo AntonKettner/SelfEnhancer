@@ -33,17 +33,30 @@ def index():
 @main_bp.route("/dashboard")
 @login_required
 def dashboard():
+    from flask import session
+
     api_key = get_api_key()
     return render_template(
-        "dashboard.html", is_admin=current_user.is_admin, api_key_configured=bool(api_key)
+        "dashboard.html",
+        is_admin=current_user.is_admin,
+        api_key_configured=bool(api_key) or session.get("is_test_user", False),
     )
 
 
 @main_bp.route("/upload-codebase", methods=["POST"])
 @login_required
 def upload_codebase():
+    from flask import session
+
     if "codebase" not in request.files:
         return jsonify({"error": "No file provided"}), 400
+
+    # Handle test user API key
+    if session.get("is_test_user"):
+        api_key = request.form.get("api_key")
+        if not api_key:
+            return jsonify({"error": "API key is required for test users"}), 400
+        os.environ["OPENAI_API_KEY"] = api_key
 
     file = request.files["codebase"]
     if file.filename == "":

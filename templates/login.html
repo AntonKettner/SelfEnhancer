@@ -71,6 +71,11 @@
             </div>
             <button type="submit">Login</button>
         </form>
+        <div style="text-align: center; margin-top: 1rem;">
+            <form method="POST" action="{{ url_for('auth.test_login') }}">
+                <button type="submit" style="background-color: #28a745;">Login as Test User</button>
+            </form>
+        </div>
     </div>
 </body>
 </html>
