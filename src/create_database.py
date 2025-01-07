@@ -264,21 +264,13 @@ def save_to_chroma(chunks: list, rag_path: str):
 
         # Force persist and wait for files
         print("Persisting database...")
-        db.persist()
+        client.persist()
 
-        # Give ChromaDB time to create files
-        import time
-
-        max_retries = 5
-        for i in range(max_retries):
-            if os.path.exists(os.path.join(rag_path, "chroma.sqlite3")):
-                print("Database files created successfully")
-                break
-            if i < max_retries - 1:
-                print(f"Waiting for database files (attempt {i+1}/{max_retries})...")
-                time.sleep(1)
-            else:
-                raise ValueError("Database files not created after maximum retries")
+        # Verify database files exist
+        print("Verifying database files...")
+        if not os.path.exists(os.path.join(rag_path, "chroma.sqlite3")):
+            raise ValueError("Database files not created properly")
+        print("Database files created successfully")
 
         return db
     except Exception as e:
